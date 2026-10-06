@@ -25,6 +25,7 @@ from tkinter import ttk, filedialog, messagebox, scrolledtext
 import settings
 import compat
 import theme
+import fontload
 import wordlists
 import hashcat_iface as hc
 import updater
@@ -72,6 +73,7 @@ class App(tk.Tk):
         self.title("HashBench - push-button hashcat")
         self.geometry("1040x780")
         self.minsize(900, 640)
+        fontload.register()          # load bundled Orbitron/Exo 2 if present
         self.style = theme.apply(self)
 
         self.catalog = wordlists.Catalog()

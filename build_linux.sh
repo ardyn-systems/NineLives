@@ -18,6 +18,8 @@ if [ "${NOFETCH:-0}" != "1" ]; then
   echo "== Fetching wordlists (into vendor/wordlists) =="
   if [ "${1:-}" = "--full" ]; then python3 fetch_wordlists.py --full; \
      else python3 fetch_wordlists.py; fi
+  echo "== Fetching fonts (into vendor/fonts) =="
+  python3 fetch_fonts.py
 fi
 
 ADD_DATA=()

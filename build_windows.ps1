@@ -19,6 +19,8 @@ if (-not $NoFetch) {
     python fetch_hashcat.py
     Write-Host "== Fetching wordlists (into vendor\wordlists) =="
     if ($Full) { python fetch_wordlists.py --full } else { python fetch_wordlists.py }
+    Write-Host "== Fetching fonts (into vendor\fonts) =="
+    python fetch_fonts.py
 }
 
 $addData = @()
