@@ -18,11 +18,24 @@ Run:  python hashbench.py
 
 import os
 import sys
+import logging
 
 import webview
 
 import api
 import hashcat_iface as hc
+
+
+class _DropNativeIntrospection(logging.Filter):
+    """Drop pywebview's benign 'window.native…' COM introspection errors on
+    Windows (it fails to walk the WinForms accessibility object and logs a
+    recursion error). Real errors still pass through."""
+
+    def filter(self, record):
+        return "window.native" not in record.getMessage()
+
+
+logging.getLogger("pywebview").addFilter(_DropNativeIntrospection())
 
 
 def _index_path():
@@ -31,6 +44,8 @@ def _index_path():
 
 def main():
     bridge = api.Api()
+    # Note: no background_color — some WebView2 runtimes lack the controller
+    # interface it probes (E_NOINTERFACE); the page's own CSS paints the bg.
     window = webview.create_window(
         "HashBench",
         url=_index_path(),
@@ -38,7 +53,6 @@ def main():
         width=1120,
         height=860,
         min_size=(900, 640),
-        background_color="#15140f",
     )
     bridge.bind(window)
     # gui=None lets pywebview pick the platform backend (EdgeChromium on Windows,
