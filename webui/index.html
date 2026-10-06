@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en" data-theme="terrain">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HashBench</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand">
+      <div class="logo">H</div>
+      <div class="brand-text">
+        <span class="brand-name">HashBench</span>
+        <span class="brand-tag">hashcat control console</span>
+      </div>
+    </div>
+    <div class="status" id="status">starting…</div>
+    <div class="top-actions">
+      <div class="menu-wrap">
+        <button class="btn" id="theme-btn">Theme ▾</button>
+        <div class="menu hidden" id="theme-menu"></div>
+      </div>
+      <button class="btn" id="update-btn">Check for updates</button>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div class="tabs">
+      <button class="tab active" data-view="crack">Crack</button>
+      <button class="tab" data-view="settings">Settings</button>
+    </div>
+
+    <!-- ===== Crack view ===== -->
+    <section id="view-crack">
+      <div class="card">
+        <h2>Target</h2>
+        <p class="sub">The hash or capture to crack, and what kind it is.</p>
+        <div class="row">
+          <label class="field grow">Hash file
+            <input type="text" id="hashfile" placeholder="path to .hc22000 / hash file">
+          </label>
+          <button class="btn" id="pick-hash" style="align-self:flex-end">Browse…</button>
+        </div>
+        <div class="row">
+          <label class="field grow">Hash type
+            <input type="text" id="hashtype" list="hashtypes" placeholder="search… e.g. WPA, NTLM, 1000">
+            <datalist id="hashtypes"></datalist>
+          </label>
+          <span class="hint" id="type-hint" style="align-self:flex-end"></span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Attack</h2>
+        <p class="sub">How candidates are generated. The options below adapt to this.</p>
+        <div class="segmented" id="attack-seg"></div>
+        <div class="mode-desc" id="attack-desc"></div>
+      </div>
+
+      <div class="card" id="inputs-card">
+        <h2>Inputs</h2>
+        <div id="inputs"></div>
+      </div>
+
+      <div class="card">
+        <h2>Options <span class="badge accent" id="opt-count"></span></h2>
+        <p class="sub">Only options that stack with the chosen attack are shown.</p>
+        <div id="options"></div>
+      </div>
+
+      <div class="row" style="margin-bottom:1rem">
+        <button class="btn primary" id="run-btn">Run crack</button>
+        <button class="btn danger" id="stop-btn" disabled>Stop</button>
+        <button class="btn" id="cmd-btn">Show command</button>
+        <button class="btn" id="recovered-btn">Show recovered</button>
+        <span class="spacer"></span>
+        <button class="btn ghost small" id="clear-btn">Clear console</button>
+      </div>
+
+      <div class="console" id="console"></div>
+    </section>
+
+    <!-- ===== Settings view ===== -->
+    <section id="view-settings" class="hidden">
+      <div class="card">
+        <h2>Wordlists</h2>
+        <p class="sub">Point at your SecLists folder once; it feeds the dropdowns.
+          Installed builds ship a bundled set here already.</p>
+        <div class="row">
+          <label class="field grow">SecLists / wordlists folder
+            <input type="text" id="seclists" placeholder="path to SecLists">
+          </label>
+          <button class="btn" id="pick-seclists" style="align-self:flex-end">Browse…</button>
+          <button class="btn" id="rescan-btn" style="align-self:flex-end">Rescan</button>
+        </div>
+        <p class="hint" id="wl-count"></p>
+      </div>
+      <div class="card">
+        <h2>hashcat</h2>
+        <p class="sub">Bundled with installed builds and auto-updated from hashcat's releases.</p>
+        <p class="hint" id="hc-info"></p>
+        <div class="row">
+          <button class="btn" id="update-btn2">Check / install update</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

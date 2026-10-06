@@ -24,15 +24,22 @@ click Run.
 ## Modules
 
 ```
-hashbench.py       launcher
-app.py             Tkinter GUI (push-button front-end)
+hashbench.py       launcher (pywebview desktop window)
+webui/             NetSeer-styled front-end — index.html, styles.css, app.js
+api.py             JS ↔ Python bridge exposed to the web UI
 hashcat_iface.py   locate/run hashcat; parse --help → live hash catalog
 compat.py          attack-mode ↔ stackable-option matrix + explanations
 wordlists.py       SecLists catalog + hash-aware suggestions
 updater.py         check/install hashcat releases into vendor/
+themes.py          NetSeer theme tokens (terrain/midnight/daylight/blueprint)
 settings.py        shared JSON settings
 cracker.py         optional pure-Python WPA engine (works with no hashcat)
 ```
+
+The UI is a real web view: `webui/styles.css` carries NetSeer's four shipping
+themes as `[data-theme]` token sets (the easter-egg themes are excluded), and
+`api.py` bridges the page to the backend. Theme switching is instant and
+persisted.
 
 Inspect the stackability matrix without the GUI:
 
@@ -43,7 +50,10 @@ python hashcat_iface.py   # show the hash-mode catalog (live or fallback)
 
 ## Requirements
 
-- **Python 3.8+** with Tkinter (Windows: included; Ubuntu: `sudo apt install python3-tk`)
+- **Python 3.8+**
+- **pywebview** (`pip install pywebview`)
+  - Windows: uses the built-in Edge **WebView2** runtime (present on Win 10/11); needs `pythonnet`
+  - Ubuntu: `sudo apt install python3-gi gir1.2-webkit2-4.1` (or `-4.0` on older releases)
 - **hashcat** — bundle it (below) or install it; the app also finds a system copy
 - For bundling/updating hashcat: `py7zr` (`pip install py7zr`) or a `7z`/`7za` CLI
 

@@ -12,23 +12,21 @@ param([switch]$Full, [switch]$NoFetch)
 $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot
 
-python -m pip install --quiet --upgrade pyinstaller py7zr
+python -m pip install --quiet --upgrade pyinstaller py7zr pywebview pythonnet
 
 if (-not $NoFetch) {
     Write-Host "== Fetching latest hashcat (into vendor\hashcat) =="
     python fetch_hashcat.py
     Write-Host "== Fetching wordlists (into vendor\wordlists) =="
     if ($Full) { python fetch_wordlists.py --full } else { python fetch_wordlists.py }
-    Write-Host "== Fetching fonts (into vendor\fonts) =="
-    python fetch_fonts.py
 }
 
-$addData = @()
+$addData = @("--add-data", "webui;webui")
 if (Test-Path "vendor") { $addData += @("--add-data", "vendor;vendor") }
 
 Write-Host "== Building with PyInstaller =="
 pyinstaller --noconfirm --windowed --name HashBench `
-    --collect-submodules tkinter `
+    --collect-all webview `
     @addData `
     hashbench.py
 

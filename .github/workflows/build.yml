@@ -43,7 +43,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: System deps
-        run: sudo apt-get update && sudo apt-get install -y python3-tk p7zip-full
+        run: sudo apt-get update && sudo apt-get install -y p7zip-full python3-gi gir1.2-webkit2-4.1
       - name: Build (fetches hashcat + wordlists, PyInstaller, tarball)
         run: bash build_linux.sh
       - name: Upload tarball artifact

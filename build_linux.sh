@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Build the Ubuntu/Linux HashBench bundle (tarball).
 #
-# Prereqs:  sudo apt install python3-tk p7zip-full git
-#           python3 -m pip install pyinstaller py7zr
+# Prereqs:  sudo apt install p7zip-full git python3-gi gir1.2-webkit2-4.1
+#           (gir1.2-webkit2-4.0 on older Ubuntu) — pywebview's GTK/WebKit backend
+#           python3 -m pip install pyinstaller py7zr pywebview
 #
 # Usage:    bash build_linux.sh            # curated wordlists
 #           bash build_linux.sh --full     # entire SecLists (large)
@@ -10,7 +11,7 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-python3 -m pip install --quiet --upgrade pyinstaller py7zr
+python3 -m pip install --quiet --upgrade pyinstaller py7zr pywebview
 
 if [ "${NOFETCH:-0}" != "1" ]; then
   echo "== Fetching latest hashcat (into vendor/hashcat) =="
@@ -18,16 +19,14 @@ if [ "${NOFETCH:-0}" != "1" ]; then
   echo "== Fetching wordlists (into vendor/wordlists) =="
   if [ "${1:-}" = "--full" ]; then python3 fetch_wordlists.py --full; \
      else python3 fetch_wordlists.py; fi
-  echo "== Fetching fonts (into vendor/fonts) =="
-  python3 fetch_fonts.py
 fi
 
-ADD_DATA=()
+ADD_DATA=(--add-data "webui:webui")
 if [ -d vendor ]; then ADD_DATA+=(--add-data "vendor:vendor"); fi
 
 echo "== Building with PyInstaller =="
 pyinstaller --noconfirm --windowed --name HashBench \
-  --collect-submodules tkinter \
+  --collect-all webview \
   "${ADD_DATA[@]}" \
   hashbench.py
 
