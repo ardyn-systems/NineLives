@@ -117,9 +117,9 @@ class App(tk.Tk):
     def _build_statusbar(self):
         header = ttk.Frame(self)
         header.pack(fill="x", padx=12, pady=(12, 2))
-        ttk.Label(header, text="HASHBENCH", style="Display.TLabel").pack(side="left")
-        ttk.Label(header, text="  hashcat control console",
-                  style="Hint.TLabel").pack(side="left", pady=(10, 0))
+        ttk.Label(header, text="HashBench", style="Display.TLabel").pack(side="left")
+        ttk.Label(header, text="   hashcat control console",
+                  style="Hint.TLabel").pack(side="left", pady=(6, 0))
         ttk.Separator(self, orient="horizontal").pack(fill="x", padx=12, pady=(2, 0))
 
         bar = ttk.Frame(self)
@@ -128,8 +128,19 @@ class App(tk.Tk):
         self._refresh_hc_status()
         ttk.Label(bar, textvariable=self.hc_status,
                   style="Accentc.TLabel").pack(side="left")
+
         ttk.Button(bar, text="Check for updates",
                    command=self._check_updates).pack(side="right")
+        self._theme_ids = {lbl: tid for tid, lbl in theme.theme_choices()}
+        self.theme_var = tk.StringVar()
+        for tid, lbl in theme.theme_choices():
+            if tid == theme.CURRENT:
+                self.theme_var.set(lbl)
+        tcb = ttk.Combobox(bar, textvariable=self.theme_var, state="readonly",
+                           width=26, values=[lbl for _t, lbl in theme.theme_choices()])
+        tcb.bind("<<ComboboxSelected>>", self._on_theme_change)
+        tcb.pack(side="right", padx=6)
+        ttk.Label(bar, text="Theme:", style="Hint.TLabel").pack(side="right")
 
     def _refresh_hc_status(self):
         path = hc.find_hashcat()
@@ -139,6 +150,19 @@ class App(tk.Tk):
         else:
             self.hc_status.set("hashcat: NOT installed - use Settings to "
                                "install/update, or the dropdowns still work offline")
+
+    def _on_theme_change(self, _e=None):
+        tid = self._theme_ids.get(self.theme_var.get())
+        if tid:
+            self._reskin(tid)
+
+    def _reskin(self, theme_id):
+        theme.apply(self, theme_id)
+        if hasattr(self, "log"):
+            self.log.configure(bg=theme.PANEL, fg=theme.TEXT,
+                               insertbackground=theme.ACCENT)
+        if hasattr(self, "opt_canvas"):
+            self.opt_canvas.configure(bg=theme.BG)
 
     # --- crack tab --------------------------------------------------------
     def _build_crack(self, f):
@@ -185,7 +209,8 @@ class App(tk.Tk):
         r += 1
         optwrap = ttk.LabelFrame(f, text="Options that stack with this attack")
         optwrap.grid(row=r, column=0, columnspan=4, sticky="nsew", **pad)
-        self.opt_canvas = tk.Canvas(optwrap, height=220, highlightthickness=0)
+        self.opt_canvas = tk.Canvas(optwrap, height=220, highlightthickness=0,
+                                    bg=theme.BG)
         sb = ttk.Scrollbar(optwrap, orient="vertical",
                            command=self.opt_canvas.yview)
         self.opt_inner = ttk.Frame(self.opt_canvas)
@@ -212,8 +237,8 @@ class App(tk.Tk):
 
         r += 1
         self.log = scrolledtext.ScrolledText(
-            f, height=12, bg=theme.PANEL, fg=theme.GREEN,
-            insertbackground=theme.CYAN, borderwidth=1, relief="solid",
+            f, height=12, bg=theme.PANEL, fg=theme.TEXT,
+            insertbackground=theme.ACCENT, borderwidth=1, relief="solid",
             highlightthickness=0, font=theme.fonts(self)["mono"])
         self.log.grid(row=r, column=0, columnspan=4, sticky="nsew", **pad)
         f.columnconfigure(1, weight=1)

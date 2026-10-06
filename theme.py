@@ -1,33 +1,30 @@
 #!/usr/bin/env python3
 """
-HashBench visual theme - matches the NetSeer / Astro Loop "space HUD" look:
-near-black navy field, sharp white-bordered panels, cyan/green accents,
-blue-gray section labels, wide display headings, monospace values.
+HashBench theming - applies a NetSeer theme (themes.py) to the ttk UI.
 
-Fonts fall back gracefully: if Orbitron / Exo 2 aren't installed the closest
-system faces are used. Bundle the .ttf files and install them to pixel-match.
+NetSeer's look: Segoe UI, flat panels with 1px lines, rounded-feel accent
+buttons, muted secondary text, a single accent color per theme. Four themes
+ship (terrain/midnight/daylight/blueprint); switching re-applies tokens live.
+
+Module-level color globals (BG, PANEL, TEXT, ACCENT, ...) reflect the current
+theme after apply() and are used for the handful of non-ttk widgets (the log
+console, tooltips). ttk widgets restyle automatically when apply() re-runs.
 """
 
 import tkinter.font as tkfont
 from tkinter import ttk
 
-# --- palette (from WaveTopPalette) ----------------------------------------- #
-BG = "#000011"
-PANEL = "#111111"
-ROW_ALT = "#181822"
-SELECTED = "#16324A"
-HUD = "#FFFFFF"
-DIM = "#CCCCCC"
-MUTED = "#888888"
-FAINT = "#444444"
-LABEL = "#88AACC"
-CYAN = "#00FFFF"
-GREEN = "#00FF00"
-YELLOW = "#FFFF00"
-GOLD = "#FFDD44"
-BLUE = "#4488FF"
-RED = "#FF4444"
-BORDER = "#FFFFFF"
+import settings
+import themes
+
+# current theme id + token globals (populated by apply())
+CURRENT = themes.DEFAULT
+BG = PANEL = RAISED = HOVER = LINE = LINE_STRONG = "#000000"
+TEXT = MUTED = FAINT = ACCENT = ACCENT_HOVER = ON_ACCENT = "#ffffff"
+ACCENT_SOFT = DANGER = DANGER_SOFT = SELECT = "#000000"
+# legacy aliases referenced by app.py's non-ttk widgets
+CYAN = GREEN = ACCENT
+DIM = MUTED
 
 _FONTS = {}
 
@@ -41,87 +38,127 @@ def _pick(root, prefs, size, weight="normal"):
 
 
 def fonts(root):
+    """NetSeer uses Segoe UI for text and Cascadia Mono/Consolas for code."""
     if not _FONTS:
-        _FONTS["display"] = _pick(root, ["Orbitron", "Bahnschrift",
-                                         "Segoe UI Semibold", "Segoe UI"], 20, "bold")
-        _FONTS["section"] = _pick(root, ["Orbitron", "Bahnschrift",
-                                         "Segoe UI Semibold", "Segoe UI"], 10, "bold")
-        _FONTS["tab"] = _pick(root, ["Orbitron", "Bahnschrift",
-                                     "Segoe UI Semibold", "Segoe UI"], 10, "bold")
-        _FONTS["body"] = _pick(root, ["Exo 2", "Segoe UI", "Arial"], 10)
-        _FONTS["bodybold"] = _pick(root, ["Exo 2", "Segoe UI", "Arial"], 10, "bold")
-        _FONTS["mono"] = _pick(root, ["Cascadia Mono", "Consolas",
-                                      "Courier New"], 10)
+        ui = ["Segoe UI", "Inter", "system-ui", "Helvetica Neue", "Arial"]
+        mono = ["Cascadia Mono", "Consolas", "Courier New"]
+        _FONTS["display"] = _pick(root, ui, 15, "bold")
+        _FONTS["section"] = _pick(root, ui, 9, "bold")
+        _FONTS["tab"] = _pick(root, ui, 10)
+        _FONTS["body"] = _pick(root, ui, 10)
+        _FONTS["bodybold"] = _pick(root, ui, 10, "bold")
+        _FONTS["mono"] = _pick(root, mono, 10)
     return _FONTS
 
 
-def apply(root):
-    """Apply the theme to a Tk root and return the ttk.Style."""
+def theme_choices():
+    """[(id, 'Name - note'), ...] in NetSeer's menu order."""
+    out = []
+    for tid in themes.ORDER:
+        t = themes.THEMES[tid]
+        out.append((tid, f"{t['name']} - {t['note']}"))
+    return out
+
+
+def _set_globals(tk_):
+    g = globals()
+    for k, v in tk_.items():
+        g[k.upper()] = v
+    g["CYAN"] = g["GREEN"] = tk_["accent"]
+    g["DIM"] = tk_["muted"]
+
+
+def apply(root, theme_id=None):
+    """Apply a theme to the Tk root and return the ttk.Style."""
+    global CURRENT
+    theme_id = theme_id or settings.get("ui_theme", themes.DEFAULT)
+    if theme_id not in themes.THEMES:
+        theme_id = themes.DEFAULT
+    CURRENT = theme_id
+    t = themes.get(theme_id)["tokens"]
+    _set_globals(t)
+    settings.set("ui_theme", theme_id)
+
     f = fonts(root)
-    root.configure(bg=BG)
-    # dropdown list colors go through the option database
-    root.option_add("*TCombobox*Listbox.background", PANEL)
-    root.option_add("*TCombobox*Listbox.foreground", HUD)
-    root.option_add("*TCombobox*Listbox.selectBackground", SELECTED)
-    root.option_add("*TCombobox*Listbox.selectForeground", CYAN)
+    root.configure(bg=t["bg"])
+    root.option_add("*TCombobox*Listbox.background", t["raised"])
+    root.option_add("*TCombobox*Listbox.foreground", t["text"])
+    root.option_add("*TCombobox*Listbox.selectBackground", t["accent"])
+    root.option_add("*TCombobox*Listbox.selectForeground", t["on_accent"])
     root.option_add("*TCombobox*Listbox.font", f["body"])
 
     st = ttk.Style(root)
     st.theme_use("clam")
 
-    st.configure(".", background=BG, foreground=HUD, fieldbackground=PANEL,
-                 bordercolor=BORDER, font=f["body"], focuscolor=CYAN)
-    st.configure("TFrame", background=BG)
-    st.configure("TLabel", background=BG, foreground=HUD, font=f["body"])
-    st.configure("Hint.TLabel", background=BG, foreground=MUTED, font=f["body"])
-    st.configure("Label.TLabel", background=BG, foreground=LABEL, font=f["body"])
-    st.configure("Group.TLabel", background=BG, foreground=LABEL,
+    st.configure(".", background=t["bg"], foreground=t["text"],
+                 fieldbackground=t["raised"], bordercolor=t["line"],
+                 font=f["body"], focuscolor=t["accent"])
+    st.configure("TFrame", background=t["bg"])
+    st.configure("TLabel", background=t["bg"], foreground=t["text"], font=f["body"])
+    st.configure("Hint.TLabel", background=t["bg"], foreground=t["muted"],
+                 font=f["body"])
+    st.configure("Label.TLabel", background=t["bg"], foreground=t["muted"],
+                 font=f["body"])
+    st.configure("Group.TLabel", background=t["bg"], foreground=t["muted"],
                  font=f["section"])
-    st.configure("Display.TLabel", background=BG, foreground=HUD,
+    st.configure("Display.TLabel", background=t["bg"], foreground=t["text"],
                  font=f["display"])
-    st.configure("Accentc.TLabel", background=BG, foreground=CYAN, font=f["body"])
+    st.configure("Accentc.TLabel", background=t["bg"], foreground=t["accent"],
+                 font=f["body"])
 
-    st.configure("TLabelframe", background=BG, bordercolor=BORDER,
+    # Cards (labelframes): 1px line border on the base bg, muted caption.
+    st.configure("TLabelframe", background=t["bg"], bordercolor=t["line"],
                  relief="solid", borderwidth=1)
-    st.configure("TLabelframe.Label", background=BG, foreground=LABEL,
+    st.configure("TLabelframe.Label", background=t["bg"], foreground=t["muted"],
                  font=f["section"])
 
-    st.configure("TButton", background=PANEL, foreground=HUD, bordercolor=BORDER,
-                 relief="solid", borderwidth=1, padding=(10, 5), font=f["bodybold"])
-    st.map("TButton", background=[("active", SELECTED)],
-           foreground=[("active", CYAN)])
+    # Buttons: NetSeer .btn (raised fill, line-strong border) + .btn.primary.
+    st.configure("TButton", background=t["raised"], foreground=t["text"],
+                 bordercolor=t["line_strong"], relief="solid", borderwidth=1,
+                 padding=(12, 6), font=f["body"])
+    st.map("TButton", background=[("active", t["hover"]), ("disabled", t["panel"])],
+           bordercolor=[("active", t["faint"])],
+           foreground=[("disabled", t["faint"])])
 
-    st.configure("Accent.TButton", background=CYAN, foreground=BG,
-                 bordercolor=CYAN, font=f["bodybold"], padding=(14, 6))
-    st.map("Accent.TButton", background=[("active", GREEN)],
-           foreground=[("active", BG)])
+    st.configure("Accent.TButton", background=t["accent"], foreground=t["on_accent"],
+                 bordercolor=t["accent"], font=f["bodybold"], padding=(14, 7))
+    st.map("Accent.TButton",
+           background=[("active", t["accent_hover"]), ("disabled", t["panel"])],
+           bordercolor=[("active", t["accent_hover"])],
+           foreground=[("disabled", t["faint"])])
 
-    st.configure("Stop.TButton", background=PANEL, foreground=RED,
-                 bordercolor=RED)
-    st.map("Stop.TButton", background=[("active", "#2a0f0f")],
-           foreground=[("active", RED)])
+    st.configure("Stop.TButton", background=t["raised"], foreground=t["danger"],
+                 bordercolor=t["line_strong"])
+    st.map("Stop.TButton", background=[("active", t["danger_soft"])],
+           foreground=[("active", t["danger"])])
 
-    st.configure("TEntry", fieldbackground=PANEL, foreground=HUD,
-                 insertcolor=CYAN, bordercolor=BORDER)
-    st.configure("TCombobox", fieldbackground=PANEL, background=PANEL,
-                 foreground=HUD, arrowcolor=CYAN, bordercolor=BORDER)
-    st.map("TCombobox", fieldbackground=[("readonly", PANEL)],
-           foreground=[("readonly", HUD)])
+    st.configure("TEntry", fieldbackground=t["raised"], foreground=t["text"],
+                 insertcolor=t["accent"], bordercolor=t["line_strong"])
+    st.configure("TCombobox", fieldbackground=t["raised"], background=t["raised"],
+                 foreground=t["text"], arrowcolor=t["muted"],
+                 bordercolor=t["line_strong"])
+    st.map("TCombobox", fieldbackground=[("readonly", t["raised"])],
+           foreground=[("readonly", t["text"])])
 
-    st.configure("TCheckbutton", background=BG, foreground=DIM, font=f["body"])
-    st.map("TCheckbutton", foreground=[("active", HUD)],
-           indicatorcolor=[("selected", CYAN), ("!selected", FAINT)])
-    st.configure("TRadiobutton", background=BG, foreground=DIM, font=f["body"])
-    st.map("TRadiobutton", foreground=[("active", HUD), ("selected", HUD)],
-           indicatorcolor=[("selected", CYAN), ("!selected", FAINT)])
+    st.configure("TCheckbutton", background=t["bg"], foreground=t["text"],
+                 font=f["body"])
+    st.map("TCheckbutton", foreground=[("active", t["text"])],
+           indicatorcolor=[("selected", t["accent"]), ("!selected", t["raised"])])
+    st.configure("TRadiobutton", background=t["bg"], foreground=t["text"],
+                 font=f["body"])
+    st.map("TRadiobutton", foreground=[("active", t["text"])],
+           indicatorcolor=[("selected", t["accent"]), ("!selected", t["raised"])])
 
-    st.configure("TNotebook", background=BG, bordercolor=BORDER, tabmargins=(2, 4, 2, 0))
-    st.configure("TNotebook.Tab", background=PANEL, foreground=MUTED,
-                 bordercolor=BORDER, padding=(16, 7), font=f["tab"])
-    st.map("TNotebook.Tab", background=[("selected", SELECTED)],
-           foreground=[("selected", HUD)])
+    # Tabs: active = text color + accent underline feel (bg lifts to panel).
+    st.configure("TNotebook", background=t["bg"], bordercolor=t["line"],
+                 tabmargins=(2, 4, 2, 0))
+    st.configure("TNotebook.Tab", background=t["bg"], foreground=t["muted"],
+                 bordercolor=t["line"], padding=(16, 8), font=f["tab"])
+    st.map("TNotebook.Tab",
+           background=[("selected", t["panel"])],
+           foreground=[("selected", t["text"]), ("active", t["text"])])
 
-    st.configure("TScrollbar", troughcolor=PANEL, background=FAINT,
-                 bordercolor=BG, arrowcolor=DIM)
-    st.configure("TSeparator", background=FAINT)
+    st.configure("TScrollbar", troughcolor=t["panel"], background=t["line_strong"],
+                 bordercolor=t["bg"], arrowcolor=t["muted"])
+    st.configure("TSeparator", background=t["line"])
     return st
