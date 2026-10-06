@@ -11,7 +11,11 @@ bridge, so the web UI and the logic stay cleanly separated.
 """
 
 import os
+import re
 import json
+import time
+import base64
+import tempfile
 import threading
 import subprocess
 
@@ -20,9 +24,11 @@ import compat
 import wordlists
 import updater
 import themes
+import captures
 import hashcat_iface as hc
 
 POTFILE = os.path.join(hc.APP_DIR, "hashbench.potfile")
+CAPT_DIR = os.path.join(hc.APP_DIR, "captures")
 
 
 class Api:
@@ -34,6 +40,7 @@ class Api:
         self._mode_by_id = {m["id"]: m for m in self.modes}
         self._opt_by_key = {(o.long or o.flag): o for o in compat.OPTIONS}
         self.proc = None
+        os.makedirs(CAPT_DIR, exist_ok=True)
 
     def bind(self, window):
         self.window = window
@@ -106,12 +113,92 @@ class Api:
         import webview
         if kind == "folder":
             r = self.window.create_file_dialog(webview.FOLDER_DIALOG)
+        elif kind == "capture":
+            r = self.window.create_file_dialog(
+                webview.OPEN_DIALOG, allow_multiple=False,
+                file_types=("Captures (*.pcap;*.pcapng;*.cap)", "All files (*.*)"))
         else:
             r = self.window.create_file_dialog(webview.OPEN_DIALOG,
                                                allow_multiple=False)
         if not r:
             return None
         return r[0] if isinstance(r, (list, tuple)) else r
+
+    # ---- captures ----------------------------------------------------------
+    def _ingest(self, path, source):
+        try:
+            res = captures.extract(path)
+        except Exception as e:  # noqa: BLE001
+            return {"error": f"Could not parse capture: {e}"}
+        index = settings.get("captures_index", [])
+        by_id = {e["id"]: e for e in index}
+        added = []
+        for net in res["networks"]:
+            lines = net.get("lines") or []
+            if not lines:
+                continue
+            safe = re.sub(r"[^A-Za-z0-9_.-]", "_", net["essid"] or net["bssid"])
+            bss = net["bssid"].replace(":", "")
+            fname = f"{safe}_{bss}.hc22000"
+            fpath = os.path.join(CAPT_DIR, fname)
+            with open(fpath, "w", encoding="utf-8") as fh:
+                fh.write("\n".join(lines) + "\n")
+            entry = {"id": fname, "source": source, "essid": net["essid"],
+                     "bssid": net["bssid"], "pmkid": net["pmkid"],
+                     "handshake": net["handshake"], "path": fpath,
+                     "imported": time.strftime("%Y-%m-%d %H:%M")}
+            by_id[entry["id"]] = entry
+            added.append(entry)
+        settings.set("captures_index", list(by_id.values()))
+        msg = (f"Imported {len(added)} network(s) from {source}." if added
+               else f"No WPA hashes found in {source} "
+                    "(metadata-only formats carry no crackable hashes).")
+        return {"added": added, "count": len(added), "message": msg}
+
+    def import_capture(self, path):
+        if not path or not os.path.isfile(path):
+            return {"error": "File not found."}
+        return self._ingest(path, os.path.basename(path))
+
+    def import_capture_bytes(self, name, b64):
+        """Import a drag-dropped capture whose bytes come over the bridge."""
+        try:
+            raw = base64.b64decode(b64.split(",")[-1])
+        except Exception as e:  # noqa: BLE001
+            return {"error": f"Bad file data: {e}"}
+        tmp = os.path.join(tempfile.gettempdir(),
+                           "hashbench_" + re.sub(r"[^A-Za-z0-9_.-]", "_", name))
+        try:
+            with open(tmp, "wb") as fh:
+                fh.write(raw)
+            return self._ingest(tmp, name)
+        finally:
+            try:
+                os.remove(tmp)
+            except OSError:
+                pass
+
+    def get_captures(self):
+        return {"captures": settings.get("captures_index", [])}
+
+    def use_capture(self, entry_id):
+        for e in settings.get("captures_index", []):
+            if e["id"] == entry_id:
+                return {"hashfile": e["path"], "mode_id": 22000,
+                        "essid": e["essid"]}
+        return {"error": "Capture not found."}
+
+    def remove_capture(self, entry_id):
+        index = settings.get("captures_index", [])
+        kept = [e for e in index if e["id"] != entry_id]
+        for e in index:
+            if e["id"] == entry_id:
+                try:
+                    os.remove(e["path"])
+                except OSError:
+                    pass
+        settings.set("captures_index", kept)
+        return {"count": len(kept)}
 
     # ---- command assembly --------------------------------------------------
     def _assemble(self, p):

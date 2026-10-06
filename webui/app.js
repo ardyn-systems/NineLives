@@ -207,11 +207,34 @@ function wireEvents() {
   });
   document.addEventListener("click", () => el("theme-menu").classList.add("hidden"));
 
+  const VIEWS = ["crack", "captures", "settings"];
   document.querySelectorAll(".tab").forEach((t) => t.addEventListener("click", () => {
+    const v = t.dataset.view;
     document.querySelectorAll(".tab").forEach((x) => x.classList.toggle("active", x === t));
-    el("view-crack").classList.toggle("hidden", t.dataset.view !== "crack");
-    el("view-settings").classList.toggle("hidden", t.dataset.view !== "settings");
+    VIEWS.forEach((name) => el("view-" + name).classList.toggle("hidden", name !== v));
+    if (v === "captures") renderCaptures();
   }));
+
+  // --- captures import ---
+  el("pick-capture").addEventListener("click", async (e) => {
+    e.stopPropagation();
+    const p = await api().pick_file("capture");
+    if (p) afterImport(await api().import_capture(p));
+  });
+  const dz = el("dropzone");
+  ["dragover", "dragenter"].forEach((ev) => dz.addEventListener(ev, (e) => {
+    e.preventDefault(); dz.classList.add("drag");
+  }));
+  ["dragleave", "drop"].forEach((ev) => dz.addEventListener(ev, (e) => {
+    e.preventDefault(); dz.classList.remove("drag");
+  }));
+  dz.addEventListener("drop", async (e) => {
+    const f = e.dataTransfer.files && e.dataTransfer.files[0];
+    if (!f) return;
+    el("cap-msg").textContent = "reading " + f.name + "…";
+    const b64 = await fileToB64(f);
+    afterImport(await api().import_capture_bytes(f.name, b64));
+  });
 
   el("hashtype").addEventListener("change", async () => {
     const m = currentMode();
@@ -262,4 +285,59 @@ async function rescan() {
   const r = await api().set_seclists(el("seclists").value.trim());
   el("wl-count").textContent = `${r.count} wordlists indexed`;
   await refreshWordlists();
+}
+
+/* ---------- captures ---------- */
+function fileToB64(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result);
+    r.onerror = rej;
+    r.readAsDataURL(file);
+  });
+}
+function afterImport(r) {
+  if (!r) return;
+  el("cap-msg").textContent = r.error ? ("Error: " + r.error) : (r.message || "");
+  if (!r.error) renderCaptures();
+}
+async function renderCaptures() {
+  const { captures } = await api().get_captures();
+  const host = el("captures-list");
+  if (!captures || !captures.length) {
+    host.innerHTML = '<p class="hint">No captures imported yet.</p>';
+    return;
+  }
+  host.innerHTML = captures.map((c) => `
+    <div class="cap-row">
+      <div class="cap-main">
+        <span class="cap-essid">${esc(c.essid || "(hidden SSID)")}</span>
+        <span class="cap-sub">${esc(c.bssid)} · ${esc(c.source)} · ${esc(c.imported)}</span>
+      </div>
+      <span class="cap-badges">
+        ${c.pmkid ? '<span class="badge ok">PMKID</span>' : ""}
+        ${c.handshake ? '<span class="badge ok">handshake</span>' : ""}
+      </span>
+      <span class="spacer"></span>
+      <button class="btn small primary" data-use="${esc(c.id)}">Use in Crack</button>
+      <button class="btn small ghost" data-del="${esc(c.id)}">Remove</button>
+    </div>`).join("");
+  host.querySelectorAll("[data-use]").forEach((b) =>
+    b.addEventListener("click", () => useCapture(b.dataset.use)));
+  host.querySelectorAll("[data-del]").forEach((b) =>
+    b.addEventListener("click", async () => {
+      await api().remove_capture(b.dataset.del); renderCaptures();
+    }));
+}
+async function useCapture(id) {
+  const r = await api().use_capture(id);
+  if (r.error) { el("cap-msg").textContent = r.error; return; }
+  el("hashfile").value = r.hashfile;
+  const m = S.modeById.get(r.mode_id);
+  if (m) {
+    el("hashtype").value = `${m.id}  ${m.name}  [${m.category}]`;
+    el("hashtype").dispatchEvent(new Event("change"));
+  }
+  document.querySelector('.tab[data-view="crack"]').click();
+  out(`\n[capture] loaded ${r.essid || ""} → ${r.hashfile}\n`, "cmd");
 }

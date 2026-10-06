@@ -28,6 +28,7 @@
   <div class="wrap">
     <div class="tabs">
       <button class="tab active" data-view="crack">Crack</button>
+      <button class="tab" data-view="captures">Captures</button>
       <button class="tab" data-view="settings">Settings</button>
     </div>
 
@@ -79,6 +80,26 @@
       </div>
 
       <div class="console" id="console"></div>
+    </section>
+
+    <!-- ===== Captures view ===== -->
+    <section id="view-captures" class="hidden">
+      <div class="card">
+        <h2>Import capture</h2>
+        <p class="sub">Drop a <b>.pcap / .pcapng / .cap</b>, or browse. HashBench
+          extracts any WPA/WPA2 PMKID and 4-way handshakes and lists them by
+          network. (CSV / netxml metadata carry no crackable hashes.)</p>
+        <div id="dropzone" class="drop">
+          Drop a capture file here, or
+          <button class="btn small" id="pick-capture">Browse…</button>
+        </div>
+        <p class="hint" id="cap-msg"></p>
+      </div>
+      <div class="card">
+        <h2>Extracted networks</h2>
+        <p class="sub">Pick one to load it into the Crack tab (mode 22000).</p>
+        <div id="captures-list"><p class="hint">No captures imported yet.</p></div>
+      </div>
     </section>
 
     <!-- ===== Settings view ===== -->
