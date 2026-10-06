@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.pyc
+*.spec
+
+# PyInstaller / build output
+build/
+dist/
+
+# Bundled binaries + wordlists (fetched at build time, kept out of git)
+vendor/
+
+# Runtime / user state
+settings.json
+hashbench.db
+hashbench.potfile
+cracked.txt
+hash_modes.cache.json
+
+# Editor
+.idea/
+.vscode/

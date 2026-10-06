@@ -1,0 +1,118 @@
+# HashBench
+
+A push-button GUI front-end for **hashcat**, for authorized password auditing —
+WPA/WPA2 handshakes/PMKIDs from your own access points, and other hashes from
+systems you're explicitly scoped to test.
+
+It wraps hashcat (doesn't replace it) and stays in sync with it: the hash-type
+list and options come from hashcat itself, and the bundled hashcat engine
+auto-updates. Pick a hash type, pick an attack, pick a wordlist from a dropdown,
+click Run.
+
+## Design goals (and how they're met)
+
+| Goal | How |
+|------|-----|
+| One codebase → Windows **and** Ubuntu builds | Python + Tkinter; per-OS PyInstaller bundles |
+| Bundles hashcat, **updates when hashcat updates** | `updater.py` checks hashcat's releases and installs into `vendor/` |
+| Options stay current automatically | `hashcat_iface.py` parses `hashcat --help` for the live hash-mode catalog (cached, with a static fallback) |
+| SecLists from **dropdowns**, no uploading | `wordlists.py` indexes your SecLists folder once |
+| **Suggested wordlists** per hash type | `wordlists.Catalog.suggest()` maps the hash family → best-first lists (★ in the dropdown) |
+| **Every option explained** | `compat.py` carries plain-English descriptions + examples (shown inline and on hover) |
+| **Stackable options, no guessing** | `compat.py` encodes the attack-mode → compatible-option matrix; the UI shows only options that legally combine with the chosen `-a` mode |
+
+## Modules
+
+```
+hashbench.py       launcher
+app.py             Tkinter GUI (push-button front-end)
+hashcat_iface.py   locate/run hashcat; parse --help → live hash catalog
+compat.py          attack-mode ↔ stackable-option matrix + explanations
+wordlists.py       SecLists catalog + hash-aware suggestions
+updater.py         check/install hashcat releases into vendor/
+settings.py        shared JSON settings
+cracker.py         optional pure-Python WPA engine (works with no hashcat)
+```
+
+Inspect the stackability matrix without the GUI:
+
+```bash
+python compat.py          # dump attack modes and their compatible options
+python hashcat_iface.py   # show the hash-mode catalog (live or fallback)
+```
+
+## Requirements
+
+- **Python 3.8+** with Tkinter (Windows: included; Ubuntu: `sudo apt install python3-tk`)
+- **hashcat** — bundle it (below) or install it; the app also finds a system copy
+- For bundling/updating hashcat: `py7zr` (`pip install py7zr`) or a `7z`/`7za` CLI
+
+## Run from source
+
+```bash
+python hashbench.py
+```
+
+First launch asks for authorized-use confirmation. If hashcat isn't present yet,
+the dropdowns still work offline from the static catalog; install hashcat from
+the **Settings** tab (**Check / install update**) or bundle it first.
+
+## Bundling: hashcat + wordlists ship inside the app
+
+The build fetches these into `vendor/` and embeds them, so an installed copy has
+everything out of the box:
+
+```bash
+python fetch_hashcat.py          # latest hashcat (binary + rules) -> vendor/hashcat/
+python fetch_wordlists.py        # curated wordlists (~150 MB)     -> vendor/wordlists/
+python fetch_wordlists.py --full # OR the entire SecLists (multi-GB installer)
+```
+
+> hashcat ships **rules**, not wordlists. Wordlists (rockyou, SecLists) are
+> separate and large, so the default bundle is a **curated set** (rockyou + top
+> WPA/common-credential lists). Use `--full` for all of SecLists if you want the
+> complete collection baked in. At runtime the app defaults to the bundled
+> wordlists; point Settings at your own SecLists folder to override.
+
+## Build + installer
+
+- **Windows:** `powershell -ExecutionPolicy Bypass -File build_windows.ps1`
+  → `dist\HashBench\HashBench.exe`, and (with [Inno Setup 6](https://jrsoftware.org/isdl.php)
+  installed) a double-click installer `dist\HashBench-Setup.exe`.
+  Flags: `-Full` (bundle all of SecLists), `-NoFetch` (reuse existing `vendor/`).
+- **Ubuntu:** `bash build_linux.sh` → `dist/HashBench/HashBench` and
+  `dist/HashBench-linux-x86_64.tar.gz`.
+
+(PyInstaller isn't a cross-compiler — build the Windows bundle on Windows and the
+Linux bundle on Ubuntu, from this same source tree.)
+
+## Releases (CI)
+
+`.github/workflows/build.yml` builds both installers on every `v*` tag and
+attaches them to a GitHub Release — so "download and install" is just grabbing
+`HashBench-Setup.exe` from the Releases page. Each release re-fetches hashcat, so
+tagging a release picks up the latest hashcat automatically.
+
+```bash
+git tag v0.1.0 && git push origin v0.1.0   # triggers the release build
+```
+
+## Workflow
+
+1. **Settings → SecLists folder**: point at your SecLists checkout once; it indexes everything.
+2. **Crack tab**: pick the hash file, choose the hash type (searchable), pick an attack mode.
+3. The **Inputs** and **Options** panels rebuild for that attack mode — only compatible options appear, each explained.
+4. Wordlist dropdowns show ★ suggestions for your hash type first.
+5. **Show command** to preview, **Run crack** to go, **Show recovered** to read results.
+
+## Roadmap / fine-tuning
+
+- Benchmark + ETA readout (`hashcat -b`) so you know if a mask is realistic
+- Session save/restore surfaced as buttons (`--session`/`--restore`)
+- Capture tab wrapping `hcxdumptool → hcxpcapngtool` (clientless PMKID; no deauth)
+- Rule-file dropdown from hashcat's bundled `rules/`
+- Per-mode example-hash preview and auto hash-type detection
+
+## Scope
+
+Only for hashes from equipment you own or are explicitly authorized to test.
