@@ -19,6 +19,7 @@ import tempfile
 import threading
 import subprocess
 
+import log
 import settings
 import compat
 import wordlists
@@ -36,23 +37,33 @@ CAPT_DIR = os.path.join(hc.DATA_DIR, "captures")
 class Api:
     def __init__(self):
         self.window = None
+        log.log("Api.__init__: catalog scan")
         self.catalog = wordlists.Catalog()
         self.catalog.scan()
+        log.log(f"Api.__init__: load_hash_modes (indexed {len(self.catalog.all_entries())} wordlists)")
         self.modes = hc.load_hash_modes()
         self._mode_by_id = {m["id"]: m for m in self.modes}
         self._opt_by_key = {(o.long or o.flag): o for o in compat.OPTIONS}
         self.proc = None
         self._refreshed = False
         os.makedirs(CAPT_DIR, exist_ok=True)
+        log.log(f"Api.__init__: done ({len(self.modes)} modes)")
 
     def bind(self, window):
         self.window = window
+
+    def log(self, msg):
+        """Called from the page so the browser side's steps land in the log too."""
+        log.log("js: " + str(msg))
+        return {"ok": True}
 
     def _refresh_catalog(self):
         """Background: run the slow hashcat probes (--help, --version) and push
         the full hash-mode list + version to the UI. Never blocks startup."""
         try:
+            log.log("refresh: hashcat --help")
             modes = hc.refresh_hash_modes()
+            log.log(f"refresh: got {len(modes)} modes")
             if modes:
                 self.modes = modes
                 self._mode_by_id = {m["id"]: m for m in self.modes}
@@ -60,11 +71,14 @@ class Api:
             ver = ""
             if path:
                 import re
+                log.log("refresh: hashcat --version")
                 m = re.search(r"\d+\.\d+(?:\.\d+)?", hc.version(path) or "")
                 ver = m.group(0) if m else ""
+            log.log(f"refresh: emit hbCatalog (ver={ver})")
             self._emit("hbCatalog", self.modes, ver)
-        except Exception:  # noqa: BLE001
-            pass
+            log.log("refresh: done")
+        except Exception as e:  # noqa: BLE001
+            log.log(f"refresh: error {e!r}")
 
     def _emit(self, fn, *args):
         if not self.window:
@@ -77,12 +91,16 @@ class Api:
 
     # ---- initial state -----------------------------------------------------
     def get_init(self):
+        log.log("get_init: begin")
         path = hc.find_hashcat()
+        log.log(f"get_init: hashcat_present={bool(path)}")
         # Kick off the slow hashcat probing in the background (desktop only);
         # the UI starts instantly with cached/static modes and upgrades later.
         if path and self.window is not None and not self._refreshed:
             self._refreshed = True
+            log.log("get_init: starting background refresh")
             threading.Thread(target=self._refresh_catalog, daemon=True).start()
+        log.log("get_init: returning")
         return {
             "themes": [{"id": t, "name": themes.THEMES[t]["name"],
                         "note": themes.THEMES[t]["note"],

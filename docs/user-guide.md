@@ -72,6 +72,17 @@ NineLives can also run as a web server for an **explore + extract** deployment
 (import a capture, download the `.hc22000`) — cracking stays in the desktop app.
 See [hosting.md](hosting.md).
 
+## Troubleshooting
+
+If NineLives won't start or hangs, open the startup log — its last line shows
+where it stopped:
+
+- **Windows:** `%LOCALAPPDATA%\NineLives\startup.log`
+- **Linux:** `~/.local/share/NineLives/startup.log`
+
+That same `NineLives` folder holds your settings, potfile, and extracted
+captures (it's kept out of the install directory so nothing needs admin rights).
+
 ## Authorized use
 
 Only use NineLives against hashes and captures from equipment you own or are

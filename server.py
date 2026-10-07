@@ -37,7 +37,7 @@ HTTP_ALLOWED = {
     "get_init", "acknowledge", "get_options", "suggest_wordlists", "set_theme",
     "build_command", "run", "stop", "show_recovered", "check_update",
     "install_update", "check_self_update", "import_capture_bytes",
-    "get_captures", "use_capture", "remove_capture",
+    "get_captures", "use_capture", "remove_capture", "log",
 }
 
 

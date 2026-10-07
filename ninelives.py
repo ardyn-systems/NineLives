@@ -30,6 +30,9 @@ import argparse
 
 
 def _run_desktop():
+    import log
+    log.reset()
+    log.log("desktop: importing webview/api")
     import logging
     import webview
     import api
@@ -45,15 +48,20 @@ def _run_desktop():
 
     logging.getLogger("pywebview").addFilter(_DropNativeIntrospection())
 
+    log.log("desktop: constructing Api()")
     bridge = api.Api()
+    index = os.path.join(hc.APP_DIR, "webui", "index.html")
+    log.log(f"desktop: Api() ready; index exists={os.path.isfile(index)} ({index})")
     # No background_color — some WebView2 runtimes lack the controller interface
     # it probes (E_NOINTERFACE); the page's own CSS paints the bg.
     window = webview.create_window(
-        "NineLives",
-        url=os.path.join(hc.APP_DIR, "webui", "index.html"),
+        "NineLives", url=index,
         js_api=bridge, width=1120, height=860, min_size=(900, 640))
+    log.log("desktop: window created; binding")
     bridge.bind(window)
+    log.log("desktop: calling webview.start()")
     webview.start(debug=bool(os.environ.get("NINELIVES_DEBUG")))
+    log.log("desktop: webview.start() returned (window closed)")
 
 
 def main(argv=None):
