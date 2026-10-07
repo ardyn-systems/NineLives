@@ -186,6 +186,12 @@ browser-data folder, and the two logs above. The app also switches its working
 directory there on launch, because WebView2 writes into the working directory
 and a double-click would otherwise leave it read-only.
 
+Cracks run from a `hcwork` subfolder there, which links in hashcat's read-only
+shared folders (`OpenCL`, `modules`, `rules`, …) and holds its compiled-kernel
+cache. hashcat resolves those relative to the working directory and writes its
+runtime files there, so running from the read-only install dir would make a
+crack exit immediately with `./OpenCL/: No such file or directory`.
+
 ## Scope
 
 Only for hashes from equipment you own or are explicitly authorized to test.
