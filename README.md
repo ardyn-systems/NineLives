@@ -1,5 +1,9 @@
 # NineLives
 
+<p align="center">
+  <img src="brand/ninelives-master.png" alt="NineLives" width="380">
+</p>
+
 A push-button GUI front-end for **hashcat**, for authorized password auditing —
 WPA/WPA2 handshakes/PMKIDs from your own access points, and other hashes from
 systems you're explicitly scoped to test.
@@ -84,7 +88,15 @@ app.
 python ninelives.py --host 0.0.0.0 --port 8000   # then open http://localhost:8000
 ```
 
-Deploy to Render with the included [`render.yaml`](render.yaml). Full details in
+### Live demo (Render)
+
+One-click deploy your own hosted instance with the included
+[`render.yaml`](render.yaml):
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/ardyn-systems/NineLives)
+
+Render reads the blueprint and spins up a free **explore + extract** web
+service (no GPU, no server-side cracking). Full details in
 [docs/hosting.md](docs/hosting.md).
 
 ## Bundling: hashcat + wordlists ship inside the app
