@@ -97,21 +97,35 @@ def _download(url, dest, progress=None, timeout=60):
 
 
 def _extract_7z(archive, into):
-    """Extract a .7z, preferring py7zr, falling back to a 7z/7za CLI."""
+    """Extract a .7z.
+
+    hashcat's archive uses the BCJ2 filter, which py7zr cannot decode, so the
+    real 7-Zip CLI is tried FIRST (7z/7za handle BCJ2; the reduced 7zr does
+    not). py7zr is only a fallback for simple archives.
+    """
+    candidates = ["7z", "7za"]
+    for p in (r"C:\Program Files\7-Zip\7z.exe",
+              r"C:\Program Files (x86)\7-Zip\7z.exe"):
+        if os.path.isfile(p):
+            candidates.append(p)
+    for exe in candidates:
+        path = exe if os.path.isfile(exe) else shutil.which(exe)
+        if path:
+            subprocess.run([path, "x", "-y", f"-o{into}", archive], check=True)
+            return True
     try:
         import py7zr  # noqa: PLC0415
         with py7zr.SevenZipFile(archive, "r") as z:
             z.extractall(path=into)
         return True
     except ImportError:
-        pass
-    for exe in ("7z", "7za", "7zr"):
-        if shutil.which(exe):
-            subprocess.run([exe, "x", "-y", f"-o{into}", archive], check=True)
-            return True
-    raise RuntimeError(
-        "Need py7zr (pip install py7zr) or a 7-Zip CLI (7z/7za) on PATH "
-        "to extract the hashcat archive.")
+        raise RuntimeError(
+            "Need 7-Zip (7z/7za) on PATH to extract the hashcat archive "
+            "(its BCJ2 filter is not supported by py7zr).")
+    except Exception as e:  # noqa: BLE001
+        raise RuntimeError(
+            f"7z extraction failed via py7zr ({e}); install 7-Zip (7z), "
+            "which handles hashcat's BCJ2-filtered archive.")
 
 
 def install(version=None, progress=None, archive_path=None):
