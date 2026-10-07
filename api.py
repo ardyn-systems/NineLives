@@ -73,8 +73,9 @@ class Api:
             "seclists_root": self.catalog.root,
             "wordlists_count": len(self.catalog.all_entries()),
             # hosted = running as a web server (no desktop window): explore +
-            # extract only, cracking happens in the desktop app.
-            "hosted": self.window is None,
+            # extract only, cracking happens in the desktop app. NINELIVES_DOCS
+            # forces the full desktop UI for screenshot generation.
+            "hosted": self.window is None and not os.environ.get("NINELIVES_DOCS"),
             "app_version": appver.__version__,
         }
 
