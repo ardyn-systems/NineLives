@@ -1,47 +1,38 @@
-/* NineLives web UI — works two ways:
-   - desktop: calls window.pywebview.api.<method>(...)
-   - hosted:  POSTs to /api/<method> with a JSON args array (same shape). */
+/* NineLives web UI.
+   The page is always served by a local (desktop) or hosted NineLives server and
+   talks to it over HTTP: api().<method>(...args) POSTs a JSON args array to
+   /api/<method>. Server-pushed events (crack output, catalog refresh, download
+   status) arrive via a long-poll of /api/events. There is no pywebview bridge,
+   so a slow WebView2 start can never strand the UI on "Starting…". */
 "use strict";
 
-// api() returns an object whose methods return promises, over whichever
-// transport is available (pywebview bridge, else HTTP fetch).
-//
-// IMPORTANT: always prefer the *live* pywebview bridge. It's injected
-// asynchronously after the page loads, so on a slow WebView2 start it may not
-// exist for the first few hundred ms. Caching the fetch fallback here was the
-// "stuck on Starting…" bug: if anything called api() before the bridge arrived,
-// every later call hit /api/* on pywebview's static file server (404), boot()
-// never finished, and buttons never wired. So we re-check the bridge each call
-// and only cache the fetch proxy (which is stable once chosen in hosted mode).
-let _fetchApi = null;
-function api() {
-  if (window.pywebview && window.pywebview.api) return window.pywebview.api;
-  if (!_fetchApi) {
-    _fetchApi = new Proxy({}, { get: (_t, name) => (...args) =>
-      fetch("/api/" + String(name), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(args),
-      }).then((r) => r.json()) });
+// api().<method>(...args) → POST /api/<method> with the args as a JSON array.
+const _api = new Proxy({}, { get: (_t, name) => (...args) =>
+  fetch("/api/" + String(name), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(args),
+  }).then((r) => r.json()) });
+function api() { return _api; }
+
+// Long-poll the server's event stream and dispatch each event to its window.*
+// handler (window.hbOutput / hbDone / hbCatalog / hbWordlistStatus / hbWordlists).
+// Replaces the old evaluate_js push bridge. Runs for the life of the page.
+let _evCursor = 0;
+async function pollEvents() {
+  for (;;) {
+    try {
+      const r = await fetch("/api/events?since=" + _evCursor);
+      const data = await r.json();
+      if (typeof data.cursor === "number") _evCursor = data.cursor;
+      for (const ev of data.events || []) {
+        const fn = window[ev.fn];
+        if (typeof fn === "function") { try { fn(...(ev.args || [])); } catch (e) { /* ignore */ } }
+      }
+    } catch (e) {
+      await new Promise((res) => setTimeout(res, 1000));  // server busy/restarting
+    }
   }
-  return _fetchApi;
-}
-// Resolve once the transport is usable: the pywebview bridge if it's a desktop
-// window (it's injected shortly after load), otherwise HTTP fetch for a hosted
-// page. Prevents boot() from committing to the fetch fallback during the brief
-// window before the bridge is injected.
-function waitForApi(timeoutMs = 10000) {
-  return new Promise((resolve) => {
-    const start = Date.now();
-    (function poll() {
-      if (window.pywebview && window.pywebview.api && window.pywebview.api.get_init)
-        return resolve("bridge");
-      // No pywebview object at all after a short grace → genuinely hosted.
-      if (!window.pywebview && Date.now() - start > 1000) return resolve("fetch");
-      if (Date.now() - start > timeoutMs) return resolve("timeout");
-      setTimeout(poll, 50);
-    })();
-  });
 }
 const el = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
@@ -81,17 +72,13 @@ async function boot() {
   if (_booted || _booting) return;
   _booting = true;
   try {
-    // Don't touch api() until the bridge is injected (desktop) or we've
-    // confirmed there's no bridge coming (hosted) — otherwise we'd stick on the
-    // fetch fallback and hang at "Starting…".
-    const transport = await waitForApi();
-    blog("boot: start (transport=" + transport + ")");
+    blog("boot: start");
+    pollEvents();               // begin draining server-pushed events
     await _bootBody();
     _booted = true;
     blog("boot: done");
   } catch (e) {
-    // Leave _booted false so a later trigger (e.g. pywebviewready arriving after
-    // the load fallback) can retry instead of freezing on "Starting…".
+    // Leave _booted false so a retry can still boot rather than freezing.
     blog("boot: error " + (e && e.message));
   } finally {
     _booting = false;
@@ -130,22 +117,19 @@ async function _bootBody() {
   if (S.hosted) applyHostedMode();
   else renderWordlistDownloads();
 }
-// Desktop fires pywebviewready once the bridge is injected; hosted has no such
-// event. Trigger boot() from both — it waits for the right transport internally
-// and is guarded against double-running, so whichever fires first (or both) is
-// safe, and a late pywebviewready can still rescue a load that fired early.
-window.addEventListener("pywebviewready", boot);
+// The page is served by the server, so the backend is already up when we load.
 window.addEventListener("load", boot);
-if (document.readyState === "complete") boot();  // listeners added after load
+if (document.readyState === "complete") boot();  // script ran after load
 window.addEventListener("error", (e) => blog("js error: " + (e && e.message)));
 
 function applyHostedMode() {
   el("status").innerHTML = "hosted · <b>explore + extract</b> — crack in the desktop app";
   ["run-btn", "recovered-btn", "pick-hash", "update-btn", "update-btn2",
-   "pick-seclists", "rescan-btn"].forEach((id) => {
+   "rescan-btn"].forEach((id) => {
     const b = el(id);
     if (b) { b.disabled = true; b.title = "Available in the desktop app"; }
   });
+  const sec = el("seclists"); if (sec) sec.disabled = true;
 }
 
 /* ---------- theme menu ---------- */
@@ -355,8 +339,10 @@ function wireEvents() {
   // --- captures import ---
   el("pick-capture").addEventListener("click", async (e) => {
     e.stopPropagation();
-    const p = await api().pick_file("capture");
-    if (p) afterImport(await api().import_capture(p));
+    const f = await pickFile(".pcap,.pcapng,.cap");
+    if (!f) return;
+    el("cap-msg").textContent = "reading " + f.name + "…";
+    afterImport(await api().import_capture_bytes(f.name, f.b64));
   });
   const dz = el("dropzone");
   ["dragover", "dragenter"].forEach((ev) => dz.addEventListener(ev, (e) => {
@@ -380,12 +366,11 @@ function wireEvents() {
   });
 
   el("pick-hash").addEventListener("click", async () => {
-    const p = await api().pick_file("hashfile");
-    if (p) el("hashfile").value = p;
-  });
-  el("pick-seclists").addEventListener("click", async () => {
-    const p = await api().pick_file("folder");
-    if (p) { el("seclists").value = p; await rescan(); }
+    const f = await pickFile(".hc22000,.hccapx,.txt,.hash,.lst,*");
+    if (!f) return;
+    const r = await api().import_hash_bytes(f.name, f.b64);
+    if (r.error) return out("\n[!] " + r.error + "\n", "err");
+    if (r.path) el("hashfile").value = r.path;
   });
   el("rescan-btn").addEventListener("click", rescan);
 
@@ -491,6 +476,29 @@ function fileToB64(file) {
     r.onload = () => res(r.result);
     r.onerror = rej;
     r.readAsDataURL(file);
+  });
+}
+// Open the OS file chooser via a hidden <input> and return {name, b64} or null.
+// (Replaces the old native pywebview dialog; we upload bytes to the server.)
+function pickFile(accept) {
+  return new Promise((resolve) => {
+    const inp = document.createElement("input");
+    inp.type = "file";
+    if (accept) inp.accept = accept;
+    inp.style.display = "none";
+    document.body.appendChild(inp);
+    let done = false;
+    const finish = async (f) => {
+      if (done) return; done = true;
+      inp.remove();
+      resolve(f ? { name: f.name, b64: await fileToB64(f) } : null);
+    };
+    inp.addEventListener("change", () => finish(inp.files && inp.files[0]));
+    // If the dialog is cancelled there's no reliable event; a focus check clears it.
+    window.addEventListener("focus", () => setTimeout(() => {
+      if (!done && !(inp.files && inp.files.length)) finish(null);
+    }, 500), { once: true });
+    inp.click();
   });
 }
 function afterImport(r) {

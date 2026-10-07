@@ -33,12 +33,18 @@ import hashcat_iface as hc
 
 POTFILE = os.path.join(hc.DATA_DIR, "ninelives.potfile")
 CAPT_DIR = os.path.join(hc.DATA_DIR, "captures")
+HASH_DIR = os.path.join(hc.DATA_DIR, "hashes")   # uploaded hash files (local mode)
 
 
 class Api:
-    def __init__(self):
+    def __init__(self, local=False):
+        # local=True: the desktop app's own loopback server — full capability
+        # (cracking, updates). local=False with no window: the public hosted
+        # demo (explore + extract only). `window` is legacy (the old pywebview
+        # js-bridge); the app now always talks to Api over HTTP.
         self.window = None
-        log.log("Api.__init__: catalog scan")
+        self.local = local
+        log.log(f"Api.__init__: catalog scan (local={local})")
         self.catalog = wordlists.Catalog()
         self.catalog.scan()
         log.log(f"Api.__init__: load_hash_modes (indexed {len(self.catalog.all_entries())} wordlists)")
@@ -47,8 +53,21 @@ class Api:
         self._opt_by_key = {(o.long or o.flag): o for o in compat.OPTIONS}
         self.proc = None
         self._refreshed = False
+        # Event queue: push events to the page (crack output, catalog refresh,
+        # download status) are appended here and the page drains them over HTTP
+        # via drain_events(), replacing the old evaluate_js bridge.
+        self._events = []
+        self._event_cv = threading.Condition()
+        self._last_poll = 0.0   # liveness: when the page last drained events
         os.makedirs(CAPT_DIR, exist_ok=True)
+        os.makedirs(HASH_DIR, exist_ok=True)
         log.log(f"Api.__init__: done ({len(self.modes)} modes)")
+
+    @property
+    def full(self):
+        """True when cracking/updates are allowed (desktop/local, or legacy
+        window-bound). False for the public explore+extract demo."""
+        return self.local or self.window is not None
 
     def bind(self, window):
         self.window = window
@@ -57,6 +76,21 @@ class Api:
         """Called from the page so the browser side's steps land in the log too."""
         log.log("js: " + str(msg))
         return {"ok": True}
+
+    # ---- event stream (page <- server push) --------------------------------
+    def drain_events(self, since=0, timeout=20.0):
+        """Return events queued after index `since`, waiting up to `timeout`
+        seconds for new ones (long-poll). Returns {events, cursor}."""
+        try:
+            since = int(since)
+        except (TypeError, ValueError):
+            since = 0
+        self._last_poll = time.monotonic()
+        with self._event_cv:
+            if since >= len(self._events):
+                self._event_cv.wait(timeout=timeout)
+            evs = self._events[since:]
+            return {"events": evs, "cursor": len(self._events)}
 
     def _refresh_catalog(self):
         """Background: run the slow hashcat probes (--help, --version) and push
@@ -82,22 +116,28 @@ class Api:
             log.log(f"refresh: error {e!r}")
 
     def _emit(self, fn, *args):
-        if not self.window:
-            return
-        try:
-            payload = ",".join(json.dumps(a) for a in args)
-            self.window.evaluate_js(f"window.{fn}({payload})")
-        except Exception:  # noqa: BLE001
-            pass
+        # Queue the event for the page to drain over HTTP. (If a legacy pywebview
+        # window is bound, also push directly through its JS bridge.)
+        with self._event_cv:
+            # Append-only so the page's cursor stays valid for the session; each
+            # event is a few tens of bytes, so a session's worth is negligible.
+            self._events.append({"fn": fn, "args": list(args)})
+            self._event_cv.notify_all()
+        if self.window:
+            try:
+                payload = ",".join(json.dumps(a) for a in args)
+                self.window.evaluate_js(f"window.{fn}({payload})")
+            except Exception:  # noqa: BLE001
+                pass
 
     # ---- initial state -----------------------------------------------------
     def get_init(self):
         log.log("get_init: begin")
         path = hc.find_hashcat()
         log.log(f"get_init: hashcat_present={bool(path)}")
-        # Kick off the slow hashcat probing in the background (desktop only);
+        # Kick off the slow hashcat probing in the background (full/local mode);
         # the UI starts instantly with cached/static modes and upgrades later.
-        if path and self.window is not None and not self._refreshed:
+        if path and self.full and not self._refreshed:
             self._refreshed = True
             log.log("get_init: starting background refresh")
             threading.Thread(target=self._refresh_catalog, daemon=True).start()
@@ -115,10 +155,10 @@ class Api:
                         "version": updater.current_version() if path else ""},
             "seclists_root": self.catalog.root,
             "wordlists_count": len(self.catalog.all_entries()),
-            # hosted = running as a web server (no desktop window): explore +
-            # extract only, cracking happens in the desktop app. NINELIVES_DOCS
-            # forces the full desktop UI for screenshot generation.
-            "hosted": self.window is None and not os.environ.get("NINELIVES_DOCS"),
+            # hosted = the public explore+extract demo (no cracking). The local
+            # desktop server reports hosted=False (full UI). NINELIVES_DOCS forces
+            # the full desktop UI for screenshot generation.
+            "hosted": not self.full and not os.environ.get("NINELIVES_DOCS"),
             "app_version": appver.__version__,
         }
 
@@ -154,6 +194,10 @@ class Api:
         return {"ok": True}
 
     def set_seclists(self, path):
+        # Reads an arbitrary server path, so keep it to local/desktop mode (on
+        # the public demo it would let a visitor browse the server's filesystem).
+        if not self.full:
+            return {"error": "Setting a wordlists folder is a desktop-only feature."}
         self.catalog.set_root(path or "")
         return {"count": len(self.catalog.all_entries())}
 
@@ -164,7 +208,7 @@ class Api:
     def install_wordlist(self, item_id):
         """Download a wordlist in the background, streaming progress to the
         console and refreshing the catalog + dropdowns when it lands."""
-        if self.window is None:
+        if not self.full:
             return {"error": "Wordlist downloads run in the desktop app only."}
 
         def worker():
@@ -259,6 +303,25 @@ class Api:
             except OSError:
                 pass
 
+    def import_hash_bytes(self, name, b64):
+        """Save an uploaded hash file (e.g. a .hc22000 / NTLM dump) into the data
+        dir and return a server-side path to crack. Local mode only — this writes
+        to the server filesystem, which must never be exposed on the public demo."""
+        if not self.full:
+            return {"error": "Uploading hash files is a desktop-only feature."}
+        try:
+            raw = base64.b64decode(b64.split(",")[-1])
+        except Exception as e:  # noqa: BLE001
+            return {"error": f"Bad file data: {e}"}
+        safe = re.sub(r"[^A-Za-z0-9_.-]", "_", name) or "hashes.txt"
+        dest = os.path.join(HASH_DIR, safe)
+        try:
+            with open(dest, "wb") as fh:
+                fh.write(raw)
+        except OSError as e:
+            return {"error": f"Could not save hash file: {e}"}
+        return {"path": dest, "name": safe}
+
     def get_captures(self):
         return {"captures": settings.get("captures_index", [])}
 
@@ -321,7 +384,7 @@ class Api:
         return {"error": err} if err else {"command": subprocess.list2cmdline(cmd)}
 
     def run(self, p):
-        if self.window is None:
+        if not self.full:
             return {"error": "Cracking runs in the NineLives desktop app. "
                              "This hosted instance is explore + extract only."}
         if self.proc:
@@ -381,7 +444,7 @@ class Api:
                     "error": str(e)}
 
     def install_update(self, version):
-        if self.window is None:
+        if not self.full:
             return {"error": "Updates install in the desktop app only."}
 
         def worker():
@@ -403,7 +466,7 @@ class Api:
         return selfupdate.check()
 
     def install_self_update(self):
-        if self.window is None:
+        if not self.full:
             return {"error": "Updates install in the desktop app only."}
         info = selfupdate.check()
         if not info.get("available") or not info.get("asset"):

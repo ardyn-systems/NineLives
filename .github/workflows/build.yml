@@ -49,6 +49,14 @@ jobs:
       - name: Build (hashcat + wordlists, PyInstaller, installer)
         shell: pwsh
         run: ./build_windows.ps1
+      - name: Smoke-test the frozen build
+        shell: pwsh
+        run: |
+          & dist\NineLives\NineLives.exe --smoke-test
+          $code = $LASTEXITCODE
+          $log = "$env:LOCALAPPDATA\NineLives\smoke-test.log"
+          if (Test-Path $log) { Get-Content $log }
+          if ($code -ne 0) { throw "smoke test failed ($code)" }
       - name: Package (installer + portable zip + checksums)
         shell: pwsh
         run: |
@@ -91,6 +99,14 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y p7zip-full python3-gi gir1.2-webkit2-4.1 file wget
       - name: Build (hashcat + wordlists, PyInstaller, tarball)
         run: bash build_linux.sh
+      - name: Smoke-test the frozen build
+        run: |
+          set +e
+          dist/NineLives/NineLives --smoke-test
+          code=$?
+          log="$HOME/.local/share/NineLives/smoke-test.log"
+          [ -f "$log" ] && cat "$log"
+          exit $code
       - name: Package (tarball + AppImage + checksums)
         run: |
           V="$VERSION"

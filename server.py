@@ -38,7 +38,8 @@ HTTP_ALLOWED = {
     "build_command", "run", "stop", "show_recovered", "check_update",
     "install_update", "check_self_update", "import_capture_bytes",
     "get_captures", "use_capture", "remove_capture", "log",
-    "list_wordlist_downloads",
+    "list_wordlist_downloads", "install_wordlist", "install_self_update",
+    "set_seclists", "import_hash_bytes",
 }
 
 
@@ -74,7 +75,12 @@ class Handler(BaseHTTPRequestHandler):
         path = parsed.path
         if path == "/api/health":
             return self._json({"status": "ok", "name": "NineLives",
-                               "version": VERSION, "hosted": True})
+                               "version": VERSION,
+                               "hosted": not self.api.full})
+        if path == "/api/events":
+            qs = urllib.parse.parse_qs(parsed.query)
+            since = (qs.get("since") or ["0"])[0]
+            return self._json(self.api.drain_events(since))
         if path == "/api/download":
             return self._download(urllib.parse.parse_qs(parsed.query))
         full = self._safe_webui(path)
@@ -139,11 +145,17 @@ class Handler(BaseHTTPRequestHandler):
         self._json(result)
 
 
-def serve(host="0.0.0.0", port=8000):
-    Handler.api = api_mod.Api()          # no window bound -> hosted mode
-    httpd = ThreadingHTTPServer((host, port), Handler)
-    print(f"NineLives server (explore + extract) on http://{host}:{port}",
-          flush=True)
+def make_server(host="127.0.0.1", port=8000, local=False):
+    """Build the HTTP server. local=True gives full capability (the desktop
+    app's own loopback server); local=False is the public explore+extract demo."""
+    Handler.api = api_mod.Api(local=local)
+    return ThreadingHTTPServer((host, port), Handler)
+
+
+def serve(host="0.0.0.0", port=8000, local=False):
+    httpd = make_server(host, port, local=local)
+    kind = "desktop (full)" if local else "explore + extract"
+    print(f"NineLives server ({kind}) on http://{host}:{port}", flush=True)
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:
