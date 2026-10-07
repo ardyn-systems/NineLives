@@ -49,20 +49,19 @@ def latest_version(timeout=20):
 
 
 def current_version():
-    """Version of the bundled hashcat, from our VERSION stamp or hashcat itself."""
-    if os.path.isfile(VERSION_FILE):
-        try:
-            with open(VERSION_FILE, encoding="utf-8") as fh:
-                v = _norm(fh.read())
-                if v:
-                    return v
-        except OSError:
-            pass
+    """Bundled/updated hashcat version from a VERSION stamp next to the binary —
+    NO subprocess (the live --version is fetched in the background by the app)."""
     path = hc.find_hashcat()
-    if path:
-        m = re.search(r"\d+\.\d+(?:\.\d+)?", hc.version(path))
-        if m:
-            return m.group(0)
+    for vf in ([os.path.join(os.path.dirname(path), "VERSION")] if path else []) \
+            + [VERSION_FILE]:
+        if os.path.isfile(vf):
+            try:
+                with open(vf, encoding="utf-8") as fh:
+                    v = _norm(fh.read())
+                    if v:
+                        return v
+            except OSError:
+                pass
     return ""
 
 
