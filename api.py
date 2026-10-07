@@ -42,10 +42,29 @@ class Api:
         self._mode_by_id = {m["id"]: m for m in self.modes}
         self._opt_by_key = {(o.long or o.flag): o for o in compat.OPTIONS}
         self.proc = None
+        self._refreshed = False
         os.makedirs(CAPT_DIR, exist_ok=True)
 
     def bind(self, window):
         self.window = window
+
+    def _refresh_catalog(self):
+        """Background: run the slow hashcat probes (--help, --version) and push
+        the full hash-mode list + version to the UI. Never blocks startup."""
+        try:
+            modes = hc.refresh_hash_modes()
+            if modes:
+                self.modes = modes
+                self._mode_by_id = {m["id"]: m for m in self.modes}
+            path = hc.find_hashcat()
+            ver = ""
+            if path:
+                import re
+                m = re.search(r"\d+\.\d+(?:\.\d+)?", hc.version(path) or "")
+                ver = m.group(0) if m else ""
+            self._emit("hbCatalog", self.modes, ver)
+        except Exception:  # noqa: BLE001
+            pass
 
     def _emit(self, fn, *args):
         if not self.window:
@@ -59,6 +78,11 @@ class Api:
     # ---- initial state -----------------------------------------------------
     def get_init(self):
         path = hc.find_hashcat()
+        # Kick off the slow hashcat probing in the background (desktop only);
+        # the UI starts instantly with cached/static modes and upgrades later.
+        if path and self.window is not None and not self._refreshed:
+            self._refreshed = True
+            threading.Thread(target=self._refresh_catalog, daemon=True).start()
         return {
             "themes": [{"id": t, "name": themes.THEMES[t]["name"],
                         "note": themes.THEMES[t]["note"],
@@ -312,7 +336,7 @@ class Api:
                     version, progress=lambda m: self._emit("hbOutput",
                                                             f"[update] {m}\n"))
                 self._emit("hbOutput", f"[update] done: hashcat {ver}\n")
-                self.modes = hc.load_hash_modes(refresh=True)
+                self.modes = hc.refresh_hash_modes() or self.modes
                 self._mode_by_id = {m["id"]: m for m in self.modes}
             except Exception as e:  # noqa: BLE001
                 self._emit("hbOutput", f"[update] failed: {e}\n")

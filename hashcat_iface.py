@@ -114,18 +114,9 @@ def example_hash(mode_id, path=None):
 # --------------------------------------------------------------------------- #
 # Catalog: live -> cache -> static fallback
 # --------------------------------------------------------------------------- #
-def load_hash_modes(refresh=False):
-    """Live parse (and cache) if hashcat is present; else cached; else static."""
-    path = find_hashcat()
-    if path and (refresh or not os.path.isfile(CATALOG_CACHE)):
-        modes = parse_hash_modes(path)
-        if modes:
-            try:
-                with open(CATALOG_CACHE, "w", encoding="utf-8") as fh:
-                    json.dump(modes, fh)
-            except OSError:
-                pass
-            return modes
+def load_hash_modes():
+    """Instant: cached modes if present, else the static fallback. NO subprocess
+    (so startup never blocks on hashcat)."""
     if os.path.isfile(CATALOG_CACHE):
         try:
             with open(CATALOG_CACHE, encoding="utf-8") as fh:
@@ -133,6 +124,22 @@ def load_hash_modes(refresh=False):
         except (OSError, ValueError):
             pass
     return list(STATIC_HASH_MODES)
+
+
+def refresh_hash_modes():
+    """Run `hashcat --help` (subprocess), cache and return the full mode list.
+    Slow on first run (AV/device scan) — call from a BACKGROUND thread only."""
+    path = find_hashcat()
+    if not path:
+        return []
+    modes = parse_hash_modes(path)
+    if modes:
+        try:
+            with open(CATALOG_CACHE, "w", encoding="utf-8") as fh:
+                json.dump(modes, fh)
+        except OSError:
+            pass
+    return modes
 
 
 # A curated fallback so dropdowns work before hashcat is installed. Refreshed

@@ -257,6 +257,12 @@ function out(text, cls) {
 }
 window.hbOutput = (line) => out(line);
 window.hbDone = () => { el("run-btn").disabled = false; el("stop-btn").disabled = true; out("\n=== finished ===\n", "cmd"); };
+// Background hashcat probe finished: swap in the full hash-mode list + version.
+window.hbCatalog = (modes, version) => {
+  if (Array.isArray(modes) && modes.length) { S.hashModes = modes; buildHashTypes(); }
+  if (!S.hosted) el("status").innerHTML = version
+    ? `hashcat <b>${esc(version)}</b>` : "hashcat <b>ready</b>";
+};
 
 /* ---------- events ---------- */
 function wireEvents() {
