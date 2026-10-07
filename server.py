@@ -21,9 +21,10 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import api as api_mod
 import settings
+import version
 import hashcat_iface as hc
 
-VERSION = "0.1.0"
+VERSION = version.__version__
 WEBUI = os.path.join(hc.APP_DIR, "webui")
 CAPT_DIR = api_mod.CAPT_DIR
 # Cap uploads on small hosted instances (free Render = 512 MB RAM).
@@ -35,8 +36,8 @@ MAX_UPLOAD = int(os.environ.get("NINELIVES_MAX_UPLOAD_MB", "50")) * 1024 * 1024
 HTTP_ALLOWED = {
     "get_init", "acknowledge", "get_options", "suggest_wordlists", "set_theme",
     "build_command", "run", "stop", "show_recovered", "check_update",
-    "install_update", "import_capture_bytes", "get_captures", "use_capture",
-    "remove_capture",
+    "install_update", "check_self_update", "import_capture_bytes",
+    "get_captures", "use_capture", "remove_capture",
 }
 
 
