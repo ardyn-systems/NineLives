@@ -1,8 +1,13 @@
 name: build
 
-# Build downloadable installers whenever a version tag is pushed (e.g. v0.1.0),
-# or manually from the Actions tab. hashcat + curated wordlists are fetched
-# fresh at build time, so each release bundles the latest hashcat.
+# Builds the full release artifact set (matching NetSeer) on every version tag:
+#   - NineLives-Setup-<ver>.exe              Windows installer
+#   - NineLives-<ver>-windows-x64-portable.zip
+#   - NineLives-<ver>-linux-x86_64.tar.gz
+#   - NineLives-<ver>-x86_64.AppImage        Linux AppImage
+#   - SHA256SUMS-windows.txt / SHA256SUMS-linux.txt
+# On PRs/pushes only the fast test job runs; the installer builds need a tag or
+# a manual dispatch.
 on:
   push:
     branches: ["main"]
@@ -34,21 +39,41 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Version
+        shell: pwsh
+        run: |
+          $v = if ($env:GITHUB_REF -like 'refs/tags/*') { $env:GITHUB_REF_NAME.TrimStart('v') } else { '0.0.0-dev' }
+          "VERSION=$v" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding ascii
       - name: Install Inno Setup
         run: choco install innosetup --no-progress -y
-      - name: Build (fetches hashcat + wordlists, PyInstaller, installer)
+      - name: Build (hashcat + wordlists, PyInstaller, installer)
         shell: pwsh
         run: ./build_windows.ps1
-      - name: Upload installer artifact
+      - name: Package (installer + portable zip + checksums)
+        shell: pwsh
+        run: |
+          $v = $env:VERSION
+          Copy-Item dist\NineLives-Setup.exe "dist\NineLives-Setup-$v.exe"
+          Compress-Archive -Path dist\NineLives\* -DestinationPath "dist\NineLives-$v-windows-x64-portable.zip" -Force
+          Get-ChildItem "dist\NineLives-Setup-$v.exe", "dist\NineLives-$v-windows-x64-portable.zip" |
+            ForEach-Object { "$((Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower())  $($_.Name)" } |
+            Out-File -Encoding ascii dist\SHA256SUMS-windows.txt
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: NineLives-Setup-windows
-          path: dist/NineLives-Setup.exe
+          name: NineLives-windows
+          path: |
+            dist/NineLives-Setup-*.exe
+            dist/NineLives-*-windows-x64-portable.zip
+            dist/SHA256SUMS-windows.txt
       - name: Attach to release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/NineLives-Setup.exe
+          files: |
+            dist/NineLives-Setup-*.exe
+            dist/NineLives-*-windows-x64-portable.zip
+            dist/SHA256SUMS-windows.txt
 
   linux:
     if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
@@ -58,17 +83,53 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Version
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then V="${GITHUB_REF_NAME#v}"; else V="0.0.0-dev"; fi
+          echo "VERSION=$V" >> "$GITHUB_ENV"
       - name: System deps
-        run: sudo apt-get update && sudo apt-get install -y p7zip-full python3-gi gir1.2-webkit2-4.1
-      - name: Build (fetches hashcat + wordlists, PyInstaller, tarball)
+        run: sudo apt-get update && sudo apt-get install -y p7zip-full python3-gi gir1.2-webkit2-4.1 file wget
+      - name: Build (hashcat + wordlists, PyInstaller, tarball)
         run: bash build_linux.sh
-      - name: Upload tarball artifact
+      - name: Package (tarball + AppImage + checksums)
+        run: |
+          V="$VERSION"
+          mv "dist/NineLives-linux-x86_64.tar.gz" "dist/NineLives-$V-linux-x86_64.tar.gz"
+          APPDIR=NineLives.AppDir
+          mkdir -p "$APPDIR/usr/bin"
+          cp -r dist/NineLives/* "$APPDIR/usr/bin/"
+          cat > "$APPDIR/AppRun" <<'SH'
+          #!/bin/bash
+          HERE="$(dirname "$(readlink -f "$0")")"
+          exec "$HERE/usr/bin/NineLives" "$@"
+          SH
+          chmod +x "$APPDIR/AppRun"
+          cat > "$APPDIR/NineLives.desktop" <<'DESK'
+          [Desktop Entry]
+          Name=NineLives
+          Exec=NineLives
+          Icon=NineLives
+          Type=Application
+          Categories=Utility;Security;
+          DESK
+          cp brand/ninelives-256.png "$APPDIR/NineLives.png"
+          wget -qO /tmp/appimagetool https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
+          chmod +x /tmp/appimagetool
+          ARCH=x86_64 /tmp/appimagetool --appimage-extract-and-run "$APPDIR" "dist/NineLives-$V-x86_64.AppImage"
+          ( cd dist && sha256sum "NineLives-$V-linux-x86_64.tar.gz" "NineLives-$V-x86_64.AppImage" > SHA256SUMS-linux.txt )
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: NineLives-linux
-          path: dist/NineLives-linux-x86_64.tar.gz
+          path: |
+            dist/NineLives-*-linux-x86_64.tar.gz
+            dist/NineLives-*-x86_64.AppImage
+            dist/SHA256SUMS-linux.txt
       - name: Attach to release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/NineLives-linux-x86_64.tar.gz
+          files: |
+            dist/NineLives-*-linux-x86_64.tar.gz
+            dist/NineLives-*-x86_64.AppImage
+            dist/SHA256SUMS-linux.txt
