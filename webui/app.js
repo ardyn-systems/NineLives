@@ -23,6 +23,26 @@ function api() {
 const el = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
 
+// In-page confirm. window.confirm() opens a native WebView2 modal that can hang
+// the host window ("Not Responding"), so we use our own overlay instead.
+function uiConfirm(message, okLabel = "OK", cancelLabel = "Cancel") {
+  return new Promise((resolve) => {
+    const m = el("modal");
+    el("modal-msg").textContent = message;
+    el("modal-ok").textContent = okLabel;
+    el("modal-cancel").textContent = cancelLabel;
+    m.classList.remove("hidden");
+    const finish = (v) => {
+      m.classList.add("hidden");
+      el("modal-ok").onclick = null;
+      el("modal-cancel").onclick = null;
+      resolve(v);
+    };
+    el("modal-ok").onclick = () => finish(true);
+    el("modal-cancel").onclick = () => finish(false);
+  });
+}
+
 const S = {
   themes: [], attackModes: [], hashModes: [],
   modeByLabel: new Map(), modeById: new Map(),
@@ -38,8 +58,10 @@ async function boot() {
   const init = await api().get_init();
   S.hosted = !!init.hosted;
   if (!init.acknowledged) {
-    if (confirm("NineLives audits hashes from equipment you own or are explicitly authorized to test.\n\nConfirm you'll use it only that way?"))
-      api().acknowledge();
+    const ok = await uiConfirm(
+      "NineLives audits hashes from equipment you own or are explicitly authorized to test.\n\nConfirm you'll use it only that way?",
+      "I agree", "Not now");
+    if (ok) api().acknowledge();
   }
   S.themes = init.themes;
   S.attackModes = init.attack_modes;
@@ -311,7 +333,8 @@ function wireEvents() {
     const info = await api().check_update();
     out(`[update] current=${info.current || "none"} latest=${info.latest || "?"}\n`);
     if (!info.update_available) return out("[update] up to date (or offline).\n");
-    if (!confirm(`Install hashcat ${info.latest}? Downloads from hashcat.net.`)) return;
+    if (!(await uiConfirm(`Install hashcat ${info.latest}? Downloads from hashcat.net.`,
+                          "Install"))) return;
     await api().install_update(info.latest);
   };
   el("update-btn").addEventListener("click", doUpdate);
@@ -330,8 +353,8 @@ function wireEvents() {
         `v${esc(r.latest)} available — <a href="${esc(r.url)}" target="_blank">download from Releases</a>.`;
       return;
     }
-    if (confirm(`NineLives v${r.latest} is available (you have v${r.current}).\n\n`
-                + "Download and install now? The app will close to run the installer.")) {
+    if (await uiConfirm(`NineLives v${r.latest} is available (you have v${r.current}).\n\n`
+                + "Download and install now? The app will close to run the installer.", "Update")) {
       el("app-update-msg").textContent = `installing v${r.latest}…`;
       out(`\n[app-update] updating to v${r.latest}…\n`, "cmd");
       await api().install_self_update();

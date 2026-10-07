@@ -2,6 +2,7 @@
 """Tiny JSON-backed settings shared across NineLives modules."""
 
 import os
+import json
 
 import paths
 

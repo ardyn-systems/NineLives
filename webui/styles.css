@@ -190,3 +190,11 @@ input:focus, select:focus { border-color:var(--accent); outline:none; }
 .cap-essid { font-weight:600; }
 .cap-sub { color:var(--muted); font-size:12px; font-family:ui-monospace,"Cascadia Mono",Consolas,monospace; }
 .cap-badges { display:flex; gap:.35rem; margin-left:.4rem; }
+
+/* ---------- Modal (in-page confirm) ---------- */
+.modal { position:fixed; inset:0; z-index:100; display:flex; align-items:center;
+  justify-content:center; background:rgba(0,0,0,0.55); }
+.modal-box { max-width:440px; width:calc(100% - 3rem); border:1px solid var(--line);
+  border-radius:12px; background:var(--panel); padding:1.2rem 1.3rem; box-shadow:var(--shadow); }
+.modal-box p { margin:0 0 1rem; white-space:pre-line; line-height:1.5; }
+.modal-actions { display:flex; justify-content:flex-end; gap:.6rem; }
