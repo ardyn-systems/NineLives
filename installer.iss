@@ -3,7 +3,7 @@
 ; Compile:  iscc installer.iss   (after build_windows.ps1 produced dist\NineLives)
 
 #define AppName "NineLives"
-#define AppVersion "0.2.10"
+#define AppVersion "0.3.0"
 #define AppPublisher "Ardyn Systems"
 #define AppExe "NineLives.exe"
 
