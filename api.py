@@ -23,6 +23,7 @@ import log
 import settings
 import compat
 import wordlists
+import wordlist_dl
 import updater
 import selfupdate
 import version as appver
@@ -155,6 +156,37 @@ class Api:
     def set_seclists(self, path):
         self.catalog.set_root(path or "")
         return {"count": len(self.catalog.all_entries())}
+
+    # ---- downloadable wordlists -------------------------------------------
+    def list_wordlist_downloads(self):
+        return {"items": wordlist_dl.catalog()}
+
+    def install_wordlist(self, item_id):
+        """Download a wordlist in the background, streaming progress to the
+        console and refreshing the catalog + dropdowns when it lands."""
+        if self.window is None:
+            return {"error": "Wordlist downloads run in the desktop app only."}
+
+        def worker():
+            try:
+                self._emit("hbWordlistStatus", item_id, "starting…")
+                wordlist_dl.install(
+                    item_id,
+                    progress=lambda m: (
+                        self._emit("hbOutput", f"[wordlist] {m}\n"),
+                        self._emit("hbWordlistStatus", item_id, m)))
+                self.catalog.scan()
+                self._emit("hbOutput",
+                           f"[wordlist] done ({len(self.catalog.all_entries())} "
+                           "wordlists indexed)\n")
+                self._emit("hbWordlists", len(self.catalog.all_entries()))
+                self._emit("hbWordlistStatus", item_id, "installed")
+            except Exception as e:  # noqa: BLE001
+                self._emit("hbOutput", f"[wordlist] failed: {e}\n")
+                self._emit("hbWordlistStatus", item_id, f"failed: {e}")
+
+        threading.Thread(target=worker, daemon=True).start()
+        return {"started": True}
 
     def pick_file(self, kind):
         if not self.window:

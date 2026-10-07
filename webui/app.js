@@ -87,6 +87,7 @@ async function boot() {
   await selectAttack(0);
   wireEvents();
   if (S.hosted) applyHostedMode();
+  else renderWordlistDownloads();
   blog("boot: done");
 }
 // desktop fires pywebviewready; hosted has no such event, so fall back on load.
@@ -271,6 +272,26 @@ window.hbCatalog = (modes, version) => {
   if (!S.hosted) el("status").innerHTML = version
     ? `hashcat <b>${esc(version)}</b>` : "hashcat <b>ready</b>";
 };
+// A wordlist download reported progress / a terminal state for one item.
+window.hbWordlistStatus = (id, msg) => {
+  const row = document.querySelector(`.wl-dl[data-id="${CSS.escape(id)}"]`);
+  if (!row) return;
+  const st = row.querySelector(".wl-dl-status");
+  if (st) st.textContent = msg;
+  const done = msg === "installed";
+  const failed = /^failed/.test(msg);
+  const btn = row.querySelector(".wl-dl-btn");
+  if (btn) {
+    btn.disabled = done;
+    btn.textContent = done ? "Installed ✓" : failed ? "Retry" : "Downloading…";
+  }
+  row.classList.toggle("done", done);
+};
+// Catalog re-indexed after a download: update the count and the dropdowns.
+window.hbWordlists = (count) => {
+  el("wl-count").textContent = `${count} wordlists indexed`;
+  refreshWordlists();
+};
 
 /* ---------- events ---------- */
 function wireEvents() {
@@ -379,6 +400,44 @@ async function rescan() {
   const r = await api().set_seclists(el("seclists").value.trim());
   el("wl-count").textContent = `${r.count} wordlists indexed`;
   await refreshWordlists();
+}
+
+async function renderWordlistDownloads() {
+  const box = el("wl-downloads");
+  if (!box) return;
+  let items = [];
+  try { items = (await api().list_wordlist_downloads()).items || []; }
+  catch (e) { return; }
+  box.innerHTML =
+    `<p class="hint" style="margin-top:10px">Download more wordlists (fetched from the SecLists project):</p>`;
+  items.forEach((it) => {
+    const row = document.createElement("div");
+    row.className = "wl-dl";
+    row.dataset.id = it.id;
+    if (it.installed) row.classList.add("done");
+    const action = it.kind === "link"
+      ? `<a class="btn wl-dl-btn" href="${esc(it.url)}" target="_blank" rel="noopener">Get it ↗</a>`
+      : `<button class="btn wl-dl-btn"${it.installed ? " disabled" : ""}>${it.installed ? "Installed ✓" : "Download"}</button>`;
+    row.innerHTML =
+      `<div class="wl-dl-info"><b>${esc(it.name)}</b> <span class="wl-dl-size">${esc(it.size)}</span>`
+      + `<div class="wl-dl-desc">${esc(it.desc)}</div>`
+      + `<div class="wl-dl-status hint"></div></div>${action}`;
+    const btn = row.querySelector("button.wl-dl-btn");
+    if (btn) btn.addEventListener("click", () => startWordlistDownload(it, btn));
+    box.appendChild(row);
+  });
+}
+
+async function startWordlistDownload(it, btn) {
+  if (!(await uiConfirm(`Download ${it.name} (${it.size})?\n\nFetched from the SecLists project over HTTPS.`,
+                        "Download"))) return;
+  btn.disabled = true; btn.textContent = "Downloading…";
+  out(`\n[wordlist] downloading ${it.name}…\n`, "cmd");
+  const r = await api().install_wordlist(it.id);
+  if (r && r.error) {
+    btn.disabled = false; btn.textContent = "Download";
+    out(`[wordlist] ${r.error}\n`, "err");
+  }
 }
 
 /* ---------- captures ---------- */

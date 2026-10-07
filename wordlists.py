@@ -12,12 +12,18 @@ No uploading: everything comes from the SecLists folder you already have.
 
 import os
 import settings
+import paths
 
 WORDLIST_EXTS = (".txt", ".lst", ".dic", ".wordlist")
 
-# Wordlists shipped inside the app bundle (populated at build time by
-# fetch_wordlists.py). Used by default when the user hasn't set their own root.
+# Wordlists shipped inside the app bundle (a small starter set, populated at
+# build time by fetch_wordlists.py). Read-only.
 BUNDLED_WORDLISTS = os.path.join(settings.APP_DIR, "vendor", "wordlists")
+
+# Wordlists the user downloads from Settings at runtime (rockyou, big lists).
+# Writable per-user dir, kept out of the read-only install dir. wordlist_dl.py
+# installs here and this catalog indexes it alongside the bundled set.
+DOWNLOADED_WORDLISTS = os.path.join(paths.DATA_DIR, "wordlists")
 
 # Curated "best first" picks by SecLists relative path. If a file exists in the
 # user's checkout it's offered as a top suggestion for the matching hash family.
@@ -69,11 +75,18 @@ def _family_for(mode):
 
 class Catalog:
     def __init__(self):
-        # user-chosen root wins; otherwise fall back to bundled wordlists
+        # The user's own SecLists folder, if they've pointed at one (Settings).
         self.root = settings.get("seclists_root", "")
-        if not self.root and os.path.isdir(BUNDLED_WORDLISTS):
-            self.root = BUNDLED_WORDLISTS
         self.index = []  # list of {name, path, category, size}
+
+    def roots(self):
+        """All folders to index: the user's SecLists (if set), the bundled
+        starter set, and the runtime download dir — in that order."""
+        out = []
+        for r in (self.root, BUNDLED_WORDLISTS, DOWNLOADED_WORDLISTS):
+            if r and os.path.isdir(r) and r not in out:
+                out.append(r)
+        return out
 
     # --- discovery --------------------------------------------------------
     def set_root(self, path):
@@ -82,14 +95,20 @@ class Catalog:
         self.scan()
 
     def scan(self):
-        """Index every wordlist under the SecLists root, grouped by folder."""
+        """Index every wordlist under all roots, grouped by folder. The same
+        file reached via two roots is listed once."""
         self.index = []
-        if not self.root or not os.path.isdir(self.root):
-            return 0
-        for dirpath, _dirs, files in os.walk(self.root):
-            for f in files:
-                if f.lower().endswith(WORDLIST_EXTS):
+        seen = set()
+        for root in self.roots():
+            for dirpath, _dirs, files in os.walk(root):
+                for f in files:
+                    if not f.lower().endswith(WORDLIST_EXTS):
+                        continue
                     full = os.path.join(dirpath, f)
+                    key = os.path.normcase(os.path.abspath(full))
+                    if key in seen:
+                        continue
+                    seen.add(key)
                     try:
                         size = os.path.getsize(full)
                     except OSError:

@@ -107,16 +107,18 @@
     <section id="view-settings" class="hidden">
       <div class="card">
         <h2>Wordlists</h2>
-        <p class="sub">Point at your SecLists folder once; it feeds the dropdowns.
-          Installed builds ship a bundled set here already.</p>
+        <p class="sub">Installed builds ship a small starter set. Download bigger
+          lists below, or point at your own SecLists folder — all of them feed
+          the dropdowns.</p>
         <div class="row">
           <label class="field grow">SecLists / wordlists folder
-            <input type="text" id="seclists" placeholder="path to SecLists">
+            <input type="text" id="seclists" placeholder="path to SecLists (optional)">
           </label>
           <button class="btn" id="pick-seclists" style="align-self:flex-end">Browse…</button>
           <button class="btn" id="rescan-btn" style="align-self:flex-end">Rescan</button>
         </div>
         <p class="hint" id="wl-count"></p>
+        <div id="wl-downloads" class="wl-downloads"></div>
       </div>
       <div class="card">
         <h2>hashcat</h2>

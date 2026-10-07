@@ -26,7 +26,7 @@ Any UI change updates the guide + screenshots in the same PR
 | One codebase → Windows **and** Ubuntu builds | Python + Tkinter; per-OS PyInstaller bundles |
 | Bundles hashcat, **updates when hashcat updates** | `updater.py` checks hashcat's releases and installs into `vendor/` |
 | Options stay current automatically | `hashcat_iface.py` parses `hashcat --help` for the live hash-mode catalog (cached, with a static fallback) |
-| SecLists from **dropdowns**, no uploading | `wordlists.py` indexes your SecLists folder once |
+| SecLists from **dropdowns**, no uploading | `wordlists.py` indexes the bundled starter set, on-demand downloads, and your own SecLists folder |
 | **Suggested wordlists** per hash type | `wordlists.Catalog.suggest()` maps the hash family → best-first lists (★ in the dropdown) |
 | **Every option explained** | `compat.py` carries plain-English descriptions + examples (shown inline and on hover) |
 | **Stackable options, no guessing** | `compat.py` encodes the attack-mode → compatible-option matrix; the UI shows only options that legally combine with the chosen `-a` mode |
@@ -39,7 +39,8 @@ webui/             NetSeer-styled front-end — index.html, styles.css, app.js
 api.py             JS ↔ Python bridge exposed to the web UI
 hashcat_iface.py   locate/run hashcat; parse --help → live hash catalog
 compat.py          attack-mode ↔ stackable-option matrix + explanations
-wordlists.py       SecLists catalog + hash-aware suggestions
+wordlists.py       SecLists catalog (bundled + downloaded + your own) + suggestions
+wordlist_dl.py     on-demand wordlist downloads (rockyou etc.) into the data dir
 updater.py         check/install hashcat releases into vendor/
 themes.py          NetSeer theme tokens (terrain/midnight/daylight/blueprint)
 settings.py        shared JSON settings
@@ -99,22 +100,25 @@ Render reads the blueprint and spins up a free **explore + extract** web
 service (no GPU, no server-side cracking). Full details in
 [docs/hosting.md](docs/hosting.md).
 
-## Bundling: hashcat + wordlists ship inside the app
+## Bundling: hashcat + a wordlist starter set ship inside the app
 
-The build fetches these into `vendor/` and embeds them, so an installed copy has
-everything out of the box:
+The build fetches these into `vendor/` and embeds them, so an installed copy
+cracks out of the box:
 
 ```bash
 python fetch_hashcat.py          # latest hashcat (binary + rules) -> vendor/hashcat/
-python fetch_wordlists.py        # curated wordlists (~150 MB)     -> vendor/wordlists/
+python fetch_wordlists.py        # small STARTER wordlists (~8 MB) -> vendor/wordlists/
 python fetch_wordlists.py --full # OR the entire SecLists (multi-GB installer)
 ```
 
-> hashcat ships **rules**, not wordlists. Wordlists (rockyou, SecLists) are
-> separate and large, so the default bundle is a **curated set** (rockyou + top
-> WPA/common-credential lists). Use `--full` for all of SecLists if you want the
-> complete collection baked in. At runtime the app defaults to the bundled
-> wordlists; point Settings at your own SecLists folder to override.
+> hashcat ships **rules**, not wordlists. The big wordlists (rockyou, SecLists)
+> are large, so the default bundle is only a **small starter set** (top WPA +
+> common-credential lists, a few MB) — this keeps the installer lean and avoids
+> a slow first launch while antivirus scans a 130 MB rockyou. The big lists are
+> **downloaded on demand** from the **Settings** tab (`wordlist_dl.py`) into the
+> writable per-user data dir, where the catalog indexes them automatically. Use
+> `--full` to bake all of SecLists into the build instead, or point Settings at
+> your own SecLists folder.
 
 ## Build + installer
 

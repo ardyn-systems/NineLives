@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """
-Populate vendor/wordlists/ with wordlists to bundle into the app.
+Populate vendor/wordlists/ with a small STARTER set to bundle into the app.
 
-By default it fetches a CURATED set (rockyou + top WPA/common-credential lists)
-so the installer stays a reasonable size (~150 MB). Pass --full to clone the
-entire SecLists collection instead (multi-GB installer).
+By default it fetches only small lists (top WPA + common-credential lists, a
+few MB total) so the installer stays lean and first launch is fast — no more
+AV scanning a 130 MB rockyou on first run. The big lists (rockyou, xato-10M,
+...) are fetched on demand from the app's Settings tab (see wordlist_dl.py).
 
-    python fetch_wordlists.py            # curated (recommended default)
-    python fetch_wordlists.py --full     # entire SecLists (large!)
+    python fetch_wordlists.py            # small starter set (default)
+    python fetch_wordlists.py --full     # entire SecLists (multi-GB!)
 
 hashcat itself ships rules, not wordlists - those come bundled via
 fetch_hashcat.py. This script covers the wordlists.
@@ -15,9 +16,6 @@ fetch_hashcat.py. This script covers the wordlists.
 
 import os
 import sys
-import io
-import tarfile
-import shutil
 import subprocess
 import urllib.request
 
@@ -27,7 +25,8 @@ DEST = os.path.join(hc.APP_DIR, "vendor", "wordlists")
 RAW = "https://raw.githubusercontent.com/danielmiessler/SecLists/master/"
 UA = {"User-Agent": "NineLives-fetch"}
 
-# (relative-url, local-subpath). rockyou is handled specially (tar.gz).
+# (relative-url, local-subpath) — only SMALL lists (a few MB total). The big
+# lists (rockyou, xato-10M, ...) are in-app downloads now; see wordlist_dl.py.
 CURATED = [
     ("Passwords/WiFi-WPA/probable-v2-wpa-top4800.txt",
      "WiFi-WPA/probable-v2-wpa-top4800.txt"),
@@ -43,7 +42,6 @@ CURATED = [
     ("Usernames/top-usernames-shortlist.txt",
      "Usernames/top-usernames-shortlist.txt"),
 ]
-ROCKYOU_TGZ = RAW + "Passwords/Leaked-Databases/rockyou.txt.tar.gz"
 
 
 def _get(url, timeout=120):
@@ -61,27 +59,13 @@ def _save(url, dest):
 
 def fetch_curated():
     os.makedirs(DEST, exist_ok=True)
-    print(f"Fetching curated wordlists into {DEST}")
+    print(f"Fetching starter wordlists into {DEST}")
     for rel, sub in CURATED:
         try:
             _save(RAW + rel, os.path.join(DEST, sub))
         except Exception as e:  # noqa: BLE001
             print(f"  skip {rel}: {e}")
-    # rockyou ships as a tar.gz in SecLists; extract the .txt
-    try:
-        print("  rockyou.txt (from tar.gz)...")
-        data = _get(ROCKYOU_TGZ)
-        with tarfile.open(fileobj=io.BytesIO(data), mode="r:gz") as tf:
-            for m in tf.getmembers():
-                if m.name.endswith("rockyou.txt"):
-                    out = os.path.join(DEST, "Leaked-Databases", "rockyou.txt")
-                    os.makedirs(os.path.dirname(out), exist_ok=True)
-                    with tf.extractfile(m) as src, open(out, "wb") as dst:
-                        shutil.copyfileobj(src, dst)
-                    break
-    except Exception as e:  # noqa: BLE001
-        print(f"  skip rockyou: {e}")
-    print("done.")
+    print("done. (big lists like rockyou are in-app downloads — Settings tab.)")
 
 
 def fetch_full():
