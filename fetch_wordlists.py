@@ -25,7 +25,7 @@ import hashcat_iface as hc
 
 DEST = os.path.join(hc.APP_DIR, "vendor", "wordlists")
 RAW = "https://raw.githubusercontent.com/danielmiessler/SecLists/master/"
-UA = {"User-Agent": "HashBench-fetch"}
+UA = {"User-Agent": "NineLives-fetch"}
 
 # (relative-url, local-subpath). rockyou is handled specially (tar.gz).
 CURATED = [

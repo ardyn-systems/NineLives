@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Tiny JSON-backed settings shared across HashBench modules."""
+"""Tiny JSON-backed settings shared across NineLives modules."""
 
 import os
 import sys

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-HashBench <-> hashcat interface.
+NineLives <-> hashcat interface.
 
 Locates the bundled (or system) hashcat, reports its version, runs it with
 streaming output, and parses `hashcat --help` to build a live hash-mode

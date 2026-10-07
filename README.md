@@ -1,4 +1,4 @@
-# HashBench
+# NineLives
 
 A push-button GUI front-end for **hashcat**, for authorized password auditing —
 WPA/WPA2 handshakes/PMKIDs from your own access points, and other hashes from
@@ -24,7 +24,7 @@ click Run.
 ## Modules
 
 ```
-hashbench.py       launcher (pywebview desktop window)
+ninelives.py       launcher (pywebview desktop window)
 webui/             NetSeer-styled front-end — index.html, styles.css, app.js
 api.py             JS ↔ Python bridge exposed to the web UI
 hashcat_iface.py   locate/run hashcat; parse --help → live hash catalog
@@ -60,7 +60,7 @@ python hashcat_iface.py   # show the hash-mode catalog (live or fallback)
 ## Run from source
 
 ```bash
-python hashbench.py
+python ninelives.py
 ```
 
 First launch asks for authorized-use confirmation. If hashcat isn't present yet,
@@ -87,11 +87,11 @@ python fetch_wordlists.py --full # OR the entire SecLists (multi-GB installer)
 ## Build + installer
 
 - **Windows:** `powershell -ExecutionPolicy Bypass -File build_windows.ps1`
-  → `dist\HashBench\HashBench.exe`, and (with [Inno Setup 6](https://jrsoftware.org/isdl.php)
-  installed) a double-click installer `dist\HashBench-Setup.exe`.
+  → `dist\NineLives\NineLives.exe`, and (with [Inno Setup 6](https://jrsoftware.org/isdl.php)
+  installed) a double-click installer `dist\NineLives-Setup.exe`.
   Flags: `-Full` (bundle all of SecLists), `-NoFetch` (reuse existing `vendor/`).
-- **Ubuntu:** `bash build_linux.sh` → `dist/HashBench/HashBench` and
-  `dist/HashBench-linux-x86_64.tar.gz`.
+- **Ubuntu:** `bash build_linux.sh` → `dist/NineLives/NineLives` and
+  `dist/NineLives-linux-x86_64.tar.gz`.
 
 (PyInstaller isn't a cross-compiler — build the Windows bundle on Windows and the
 Linux bundle on Ubuntu, from this same source tree.)
@@ -100,7 +100,7 @@ Linux bundle on Ubuntu, from this same source tree.)
 
 `.github/workflows/build.yml` builds both installers on every `v*` tag and
 attaches them to a GitHub Release — so "download and install" is just grabbing
-`HashBench-Setup.exe` from the Releases page. Each release re-fetches hashcat, so
+`NineLives-Setup.exe` from the Releases page. Each release re-fetches hashcat, so
 tagging a release picks up the latest hashcat automatically.
 
 ```bash

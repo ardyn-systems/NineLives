@@ -1,4 +1,4 @@
-/* HashBench web UI — talks to the Python backend via window.pywebview.api. */
+/* NineLives web UI — talks to the Python backend via window.pywebview.api. */
 "use strict";
 
 const api = () => window.pywebview.api;
@@ -16,7 +16,7 @@ const S = {
 window.addEventListener("pywebviewready", async () => {
   const init = await api().get_init();
   if (!init.acknowledged) {
-    if (confirm("HashBench audits hashes from equipment you own or are explicitly authorized to test.\n\nConfirm you'll use it only that way?"))
+    if (confirm("NineLives audits hashes from equipment you own or are explicitly authorized to test.\n\nConfirm you'll use it only that way?"))
       api().acknowledge();
   }
   S.themes = init.themes;

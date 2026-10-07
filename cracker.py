@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-HashBench built-in WPA/WPA2 cracking engine.
+NineLives built-in WPA/WPA2 cracking engine.
 
 Pure standard-library (hashlib/hmac/multiprocessing) implementation of the
 PMKID and 4-way-handshake MIC checks, so the app can crack WPA/WPA2-PSK

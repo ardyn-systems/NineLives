@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-HashBench wordlist catalog + hash-aware suggestions.
+NineLives wordlist catalog + hash-aware suggestions.
 
 Point it once at your SecLists checkout (Settings in the GUI). It indexes every
 wordlist into a browsable catalog for the dropdowns, and - given the hash mode

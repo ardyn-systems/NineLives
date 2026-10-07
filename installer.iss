@@ -1,11 +1,11 @@
-; Inno Setup script for HashBench - builds dist\HashBench-Setup.exe
+; Inno Setup script for NineLives - builds dist\NineLives-Setup.exe
 ; Bundles the PyInstaller output (which already includes hashcat + wordlists).
-; Compile:  iscc installer.iss   (after build_windows.ps1 produced dist\HashBench)
+; Compile:  iscc installer.iss   (after build_windows.ps1 produced dist\NineLives)
 
-#define AppName "HashBench"
+#define AppName "NineLives"
 #define AppVersion "0.1.0"
 #define AppPublisher "Ardyn Systems"
-#define AppExe "HashBench.exe"
+#define AppExe "NineLives.exe"
 
 [Setup]
 AppName={#AppName}
@@ -15,10 +15,12 @@ DefaultDirName={autopf}\{#AppName}
 DefaultGroupName={#AppName}
 DisableProgramGroupPage=yes
 OutputDir=dist
-OutputBaseFilename=HashBench-Setup
+OutputBaseFilename=NineLives-Setup
 Compression=lzma2/max
 SolidCompression=yes
 WizardStyle=modern
+SetupIconFile=brand\ninelives.ico
+UninstallDisplayIcon={app}\{#AppExe}
 ArchitecturesInstallIn64BitMode=x64compatible
 ; hashcat + wordlists make this large; allow plenty of headroom.
 DiskSpanning=no
@@ -31,7 +33,7 @@ Name: "desktopicon"; Description: "Create a &desktop shortcut"; GroupDescription
 
 [Files]
 ; Ship the entire PyInstaller onedir output (app + vendor\hashcat + vendor\wordlists).
-Source: "dist\HashBench\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion
+Source: "dist\NineLives\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion
 
 [Icons]
 Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExe}"

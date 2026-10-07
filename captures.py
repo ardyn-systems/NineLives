@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-HashBench capture extractor — pure-Python, no external tools.
+NineLives capture extractor — pure-Python, no external tools.
 
 Reads a packet capture (pcap / pcapng, incl. radiotap or raw 802.11), finds
 WPA/WPA2 material (PMKID from the first handshake message, and 4-way-handshake

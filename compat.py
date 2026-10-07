@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-HashBench option-compatibility engine.
+NineLives option-compatibility engine.
 
 Encodes hashcat's attack modes and which options legally stack with each one,
 with plain-English explanations. The GUI uses this to enable only the options

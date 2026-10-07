@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-HashBench hashcat auto-updater.
+NineLives hashcat auto-updater.
 
 Checks the latest hashcat release, compares it to the bundled copy, and (on
 request) downloads and installs it into vendor/hashcat/. This is how the app
@@ -28,7 +28,7 @@ VENDOR_DIR = hc.VENDOR_DIR
 VERSION_FILE = os.path.join(VENDOR_DIR, "VERSION")
 GITHUB_LATEST = "https://api.github.com/repos/hashcat/hashcat/releases/latest"
 DL_TEMPLATE = "https://hashcat.net/files/hashcat-{ver}.7z"
-UA = {"User-Agent": "HashBench-updater"}
+UA = {"User-Agent": "NineLives-updater"}
 
 
 def _norm(ver):
@@ -126,7 +126,7 @@ def install(version=None, progress=None, archive_path=None):
         raise RuntimeError("Could not determine a hashcat version to install.")
 
     os.makedirs(VENDOR_DIR, exist_ok=True)
-    tmpdir = tempfile.mkdtemp(prefix="hashbench_")
+    tmpdir = tempfile.mkdtemp(prefix="ninelives_")
     try:
         if archive_path:
             archive = archive_path

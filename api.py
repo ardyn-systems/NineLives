@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-JS API exposed to the HashBench web UI (webui/) via pywebview.
+JS API exposed to the NineLives web UI (webui/) via pywebview.
 
 Every method returns JSON-serializable data to the page. Long-running output
 (hashcat, updates) is pushed to the page by calling JS functions
@@ -27,7 +27,7 @@ import themes
 import captures
 import hashcat_iface as hc
 
-POTFILE = os.path.join(hc.APP_DIR, "hashbench.potfile")
+POTFILE = os.path.join(hc.APP_DIR, "ninelives.potfile")
 CAPT_DIR = os.path.join(hc.APP_DIR, "captures")
 
 
@@ -167,7 +167,7 @@ class Api:
         except Exception as e:  # noqa: BLE001
             return {"error": f"Bad file data: {e}"}
         tmp = os.path.join(tempfile.gettempdir(),
-                           "hashbench_" + re.sub(r"[^A-Za-z0-9_.-]", "_", name))
+                           "ninelives_" + re.sub(r"[^A-Za-z0-9_.-]", "_", name))
         try:
             with open(tmp, "wb") as fh:
                 fh.write(raw)

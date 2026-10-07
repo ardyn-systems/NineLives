@@ -1,8 +1,28 @@
-/* HashBench — NetSeer look. Themes are token sets on [data-theme]; components
-   read only tokens. Four shipping themes (terrain/midnight/daylight/blueprint);
-   easter-egg themes are intentionally omitted. Tokens ported from NetSeer. */
+/* NineLives — NetSeer look. Themes are token sets on [data-theme]; components
+   read only tokens. Six themes: synthwave (default) + cyberpunk (NineLives neon)
+   and the four ported from NetSeer (terrain/midnight/daylight/blueprint);
+   NetSeer's easter-egg themes are intentionally omitted. */
 
 :root,
+[data-theme="synthwave"] {
+  color-scheme: dark;
+  --bg:#0a0a14; --panel:#12121f; --raised:#1a1a2e; --hover:#24243e;
+  --line:#2b2b48; --line-strong:#3d3d63; --text:#e9e9fb; --muted:#9a9ac6;
+  --faint:#63638f; --accent:#22d3ee; --accent-hover:#67e8f9; --on-accent:#061318;
+  --accent-soft:rgba(34,211,238,0.14); --danger:#ff5d8f;
+  --danger-soft:rgba(255,93,143,0.16); --ok:#58f5c8; --warn:#ff4df0;
+  --shadow:0 10px 30px rgba(0,0,0,0.6);
+}
+[data-theme="cyberpunk"] {
+  color-scheme: dark;
+  --bg:#0c0a10; --panel:#16101f; --raised:#1e1630; --hover:#281c40;
+  --line:#321f4c; --line-strong:#472a66; --text:#f5e9ff; --muted:#b89ad0;
+  --faint:#7a5f96; --accent:#ff2bd6; --accent-hover:#ff6be6; --on-accent:#1a0416;
+  --accent-soft:rgba(255,43,214,0.15); --danger:#ff4040;
+  --danger-soft:rgba(255,64,64,0.16); --ok:#30e0ff; --warn:#f7ff3c;
+  --shadow:0 10px 30px rgba(0,0,0,0.6);
+}
+
 [data-theme="terrain"] {
   color-scheme: dark;
   --bg:#15140f; --panel:#1c1a14; --raised:#25221a; --hover:#2d2a20;
@@ -57,8 +77,8 @@ html, body { margin:0; height:100%; background:var(--bg); color:var(--text);
 .topbar { display:flex; align-items:center; gap:1rem; height:56px; padding:0 1rem;
   border-bottom:1px solid var(--line); background:var(--panel); position:sticky; top:0; z-index:20; }
 .brand { display:flex; align-items:center; gap:.6rem; }
-.logo { width:30px; height:30px; border-radius:8px; background:var(--accent);
-  color:var(--on-accent); display:grid; place-items:center; font-weight:800; }
+.logo { width:30px; height:30px; border-radius:8px; object-fit:cover;
+  box-shadow:0 0 0 1px var(--line); }
 .brand-text { display:flex; flex-direction:column; line-height:1.15; }
 .brand-name { font-weight:700; }
 .brand-tag { color:var(--muted); font-size:11.5px; }
