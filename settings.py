@@ -2,19 +2,16 @@
 """Tiny JSON-backed settings shared across NineLives modules."""
 
 import os
-import sys
-import json
+
+import paths
+
+APP_DIR = paths.APP_DIR          # install dir (for locating bundled assets)
+_PATH = os.path.join(paths.DATA_DIR, "settings.json")   # writable
+_cache = None
 
 
 def base_dir():
-    if getattr(sys, "frozen", False):
-        return os.path.dirname(sys.executable)
-    return os.path.dirname(os.path.abspath(__file__))
-
-
-APP_DIR = base_dir()
-_PATH = os.path.join(APP_DIR, "settings.json")
-_cache = None
+    return paths.APP_DIR
 
 
 def _load():

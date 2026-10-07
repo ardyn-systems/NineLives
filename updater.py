@@ -24,7 +24,9 @@ import urllib.request
 
 import hashcat_iface as hc
 
-VENDOR_DIR = hc.VENDOR_DIR
+# hashcat updates are written to the per-user data dir (the install dir is
+# read-only); find_hashcat() prefers this UPDATE_DIR over the bundled copy.
+VENDOR_DIR = hc.UPDATE_DIR
 VERSION_FILE = os.path.join(VENDOR_DIR, "VERSION")
 GITHUB_LATEST = "https://api.github.com/repos/hashcat/hashcat/releases/latest"
 DL_TEMPLATE = "https://hashcat.net/files/hashcat-{ver}.7z"
@@ -128,18 +130,22 @@ def _extract_7z(archive, into):
             "which handles hashcat's BCJ2-filtered archive.")
 
 
-def install(version=None, progress=None, archive_path=None):
+def install(version=None, progress=None, archive_path=None, dest=None):
     """
-    Download (unless archive_path is given) and install hashcat into vendor/.
+    Download (unless archive_path is given) and install hashcat into `dest`
+    (default: the per-user self-update dir). Build-time bundling passes the
+    install vendor dir instead.
 
     progress(msg) is called with human-readable status lines.
     Returns the installed version string.
     """
+    dest = dest or VENDOR_DIR
+    version_file = os.path.join(dest, "VERSION")
     version = _norm(version) or latest_version()
     if not version and not archive_path:
         raise RuntimeError("Could not determine a hashcat version to install.")
 
-    os.makedirs(VENDOR_DIR, exist_ok=True)
+    os.makedirs(dest, exist_ok=True)
     tmpdir = tempfile.mkdtemp(prefix="ninelives_")
     try:
         if archive_path:
@@ -162,21 +168,21 @@ def install(version=None, progress=None, archive_path=None):
             else staging
 
         if progress:
-            progress("installing into vendor/...")
-        # Clear the old vendor copy, then move the new tree in.
-        if os.path.isdir(VENDOR_DIR):
-            for e in os.listdir(VENDOR_DIR):
-                p = os.path.join(VENDOR_DIR, e)
+            progress(f"installing into {dest}...")
+        # Clear the old copy, then move the new tree in.
+        if os.path.isdir(dest):
+            for e in os.listdir(dest):
+                p = os.path.join(dest, e)
                 shutil.rmtree(p, ignore_errors=True) if os.path.isdir(p) \
                     else os.remove(p)
         for e in os.listdir(src):
-            shutil.move(os.path.join(src, e), os.path.join(VENDOR_DIR, e))
+            shutil.move(os.path.join(src, e), os.path.join(dest, e))
 
-        with open(VERSION_FILE, "w", encoding="utf-8") as fh:
+        with open(version_file, "w", encoding="utf-8") as fh:
             fh.write(version or "")
         # Make the Linux binary executable.
         for n in ("hashcat.bin", "hashcat"):
-            p = os.path.join(VENDOR_DIR, n)
+            p = os.path.join(dest, n)
             if os.path.isfile(p):
                 os.chmod(p, 0o755)
         if progress:

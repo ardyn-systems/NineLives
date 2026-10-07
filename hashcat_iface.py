@@ -15,25 +15,28 @@ import json
 import shutil
 import subprocess
 
+import paths
+
 
 def base_dir():
-    if getattr(sys, "frozen", False):
-        return os.path.dirname(sys.executable)
-    return os.path.dirname(os.path.abspath(__file__))
+    return paths.APP_DIR
 
 
-APP_DIR = base_dir()
-VENDOR_DIR = os.path.join(APP_DIR, "vendor", "hashcat")
-CATALOG_CACHE = os.path.join(APP_DIR, "hash_modes.cache.json")
+APP_DIR = paths.APP_DIR            # install dir (read-only when installed)
+DATA_DIR = paths.DATA_DIR          # per-user writable dir
+VENDOR_DIR = os.path.join(APP_DIR, "vendor", "hashcat")    # bundled (read-only)
+UPDATE_DIR = os.path.join(DATA_DIR, "vendor", "hashcat")   # self-update target
+CATALOG_CACHE = os.path.join(DATA_DIR, "hash_modes.cache.json")
 
 
 def find_hashcat():
-    """Prefer the bundled vendor copy, then PATH, then common install dirs."""
+    """An updated copy (DATA_DIR) wins over the bundled one (APP_DIR), then PATH."""
     names = ("hashcat.exe", "hashcat.bin", "hashcat")
-    for n in names:
-        p = os.path.join(VENDOR_DIR, n)
-        if os.path.isfile(p):
-            return p
+    for d in (UPDATE_DIR, VENDOR_DIR):
+        for n in names:
+            p = os.path.join(d, n)
+            if os.path.isfile(p):
+                return p
     for n in ("hashcat", "hashcat.exe"):
         p = shutil.which(n)
         if p:
