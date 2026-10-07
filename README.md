@@ -67,6 +67,20 @@ First launch asks for authorized-use confirmation. If hashcat isn't present yet,
 the dropdowns still work offline from the static catalog; install hashcat from
 the **Settings** tab (**Check / install update**) or bundle it first.
 
+## Hosted / server mode
+
+The same UI can run as a web server for an **explore + extract** deployment —
+import a capture, pull its WPA hashes, and download the `.hc22000`. **Cracking
+is disabled when hosted** (no server-side hashcat/GPU); it stays in the desktop
+app.
+
+```bash
+python ninelives.py --host 0.0.0.0 --port 8000   # then open http://localhost:8000
+```
+
+Deploy to Render with the included [`render.yaml`](render.yaml). Full details in
+[docs/hosting.md](docs/hosting.md).
+
 ## Bundling: hashcat + wordlists ship inside the app
 
 The build fetches these into `vendor/` and embeds them, so an installed copy has

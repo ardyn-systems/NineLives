@@ -1,0 +1,21 @@
+# Public NineLives on Render's free plan — an EXPLORE + EXTRACT console
+# (browse the UI, import a capture, download the .hc22000). Cracking is
+# desktop-only, so this hosts safely with no GPU and no hashcat.
+# Setup: docs/hosting.md. Render redeploys on every push to the default branch.
+services:
+  - type: web
+    name: ninelives
+    runtime: python
+    plan: free
+    # The server is pure standard library; nothing to install.
+    buildCommand: python --version
+    startCommand: python ninelives.py --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    autoDeployTrigger: commit
+    envVars:
+      # Hosted mode: no server-side cracking; visitors import + download only.
+      - key: NINELIVES_HOSTED
+        value: "1"
+      # Free instance has 512 MB RAM — keep uploaded captures modest.
+      - key: NINELIVES_MAX_UPLOAD_MB
+        value: "20"

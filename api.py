@@ -70,6 +70,9 @@ class Api:
                         "version": updater.current_version() if path else ""},
             "seclists_root": self.catalog.root,
             "wordlists_count": len(self.catalog.all_entries()),
+            # hosted = running as a web server (no desktop window): explore +
+            # extract only, cracking happens in the desktop app.
+            "hosted": self.window is None,
         }
 
     def acknowledge(self):
@@ -240,6 +243,9 @@ class Api:
         return {"error": err} if err else {"command": subprocess.list2cmdline(cmd)}
 
     def run(self, p):
+        if self.window is None:
+            return {"error": "Cracking runs in the NineLives desktop app. "
+                             "This hosted instance is explore + extract only."}
         if self.proc:
             return {"error": "A crack is already running."}
         if not hc.find_hashcat():
@@ -293,6 +299,9 @@ class Api:
                     "error": str(e)}
 
     def install_update(self, version):
+        if self.window is None:
+            return {"error": "Updates install in the desktop app only."}
+
         def worker():
             try:
                 ver = updater.install(
