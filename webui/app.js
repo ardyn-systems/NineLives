@@ -1,7 +1,25 @@
-/* NineLives web UI — talks to the Python backend via window.pywebview.api. */
+/* NineLives web UI — works two ways:
+   - desktop: calls window.pywebview.api.<method>(...)
+   - hosted:  POSTs to /api/<method> with a JSON args array (same shape). */
 "use strict";
 
-const api = () => window.pywebview.api;
+// api() returns an object whose methods return promises, over whichever
+// transport is available (pywebview bridge, else HTTP fetch).
+let _api = null;
+function api() {
+  if (_api) return _api;
+  if (window.pywebview && window.pywebview.api) {
+    _api = window.pywebview.api;
+  } else {
+    _api = new Proxy({}, { get: (_t, name) => (...args) =>
+      fetch("/api/" + String(name), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(args),
+      }).then((r) => r.json()) });
+  }
+  return _api;
+}
 const el = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
 
@@ -9,12 +27,16 @@ const S = {
   themes: [], attackModes: [], hashModes: [],
   modeByLabel: new Map(), modeById: new Map(),
   attackId: 0, optionsMeta: new Map(), // key -> {takes_value}
-  wlByValue: new Map(),
+  wlByValue: new Map(), hosted: false,
 };
 
 /* ---------- init ---------- */
-window.addEventListener("pywebviewready", async () => {
+let _booted = false;
+async function boot() {
+  if (_booted) return;
+  _booted = true;
   const init = await api().get_init();
+  S.hosted = !!init.hosted;
   if (!init.acknowledged) {
     if (confirm("NineLives audits hashes from equipment you own or are explicitly authorized to test.\n\nConfirm you'll use it only that way?"))
       api().acknowledge();
@@ -35,7 +57,20 @@ window.addEventListener("pywebviewready", async () => {
     ? `Found: ${init.hashcat.version}` : "Not installed yet.";
   await selectAttack(0);
   wireEvents();
-});
+  if (S.hosted) applyHostedMode();
+}
+// desktop fires pywebviewready; hosted has no such event, so fall back on load.
+window.addEventListener("pywebviewready", boot);
+window.addEventListener("load", () => setTimeout(() => { if (!_booted) boot(); }, 300));
+
+function applyHostedMode() {
+  el("status").innerHTML = "hosted · <b>explore + extract</b> — crack in the desktop app";
+  ["run-btn", "recovered-btn", "pick-hash", "update-btn", "update-btn2",
+   "pick-seclists", "rescan-btn"].forEach((id) => {
+    const b = el(id);
+    if (b) { b.disabled = true; b.title = "Available in the desktop app"; }
+  });
+}
 
 /* ---------- theme menu ---------- */
 function buildThemeMenu(current) {
@@ -319,7 +354,9 @@ async function renderCaptures() {
         ${c.handshake ? '<span class="badge ok">handshake</span>' : ""}
       </span>
       <span class="spacer"></span>
-      <button class="btn small primary" data-use="${esc(c.id)}">Use in Crack</button>
+      ${S.hosted
+        ? `<a class="btn small primary" href="/api/download?id=${encodeURIComponent(c.id)}" download>Download .hc22000</a>`
+        : `<button class="btn small primary" data-use="${esc(c.id)}">Use in Crack</button>`}
       <button class="btn small ghost" data-del="${esc(c.id)}">Remove</button>
     </div>`).join("");
   host.querySelectorAll("[data-use]").forEach((b) =>
