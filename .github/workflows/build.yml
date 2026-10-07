@@ -5,14 +5,29 @@ name: build
 # fresh at build time, so each release bundles the latest hashcat.
 on:
   push:
+    branches: ["main"]
     tags: ["v*"]
+  pull_request:
   workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install pytest
+        run: python -m pip install --quiet pytest
+      - name: Run tests
+        run: python -m pytest tests/ -q
+
   windows:
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -36,6 +51,7 @@ jobs:
           files: dist/HashBench-Setup.exe
 
   linux:
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

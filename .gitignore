@@ -10,6 +10,9 @@ dist/
 # Bundled binaries + wordlists (fetched at build time, kept out of git)
 vendor/
 
+# Per-network hash files extracted from imported captures (runtime)
+captures/
+
 # Runtime / user state
 settings.json
 hashbench.db
