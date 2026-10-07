@@ -119,6 +119,11 @@ python fetch_wordlists.py --full # OR the entire SecLists (multi-GB installer)
 > writable per-user data dir, where the catalog indexes them automatically. Use
 > `--full` to bake all of SecLists into the build instead, or point Settings at
 > your own SecLists folder.
+>
+> The Windows installer clears the previously bundled `vendor\` on upgrade (see
+> `[InstallDelete]` in `installer.iss`), so upgrading from an older build drops
+> its large bundled lists rather than leaving them behind. Lists you downloaded
+> yourself live under `%LOCALAPPDATA%\NineLives` and are never touched.
 
 ## Build + installer
 
