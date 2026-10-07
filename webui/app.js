@@ -5,20 +5,43 @@
 
 // api() returns an object whose methods return promises, over whichever
 // transport is available (pywebview bridge, else HTTP fetch).
-let _api = null;
+//
+// IMPORTANT: always prefer the *live* pywebview bridge. It's injected
+// asynchronously after the page loads, so on a slow WebView2 start it may not
+// exist for the first few hundred ms. Caching the fetch fallback here was the
+// "stuck on Starting…" bug: if anything called api() before the bridge arrived,
+// every later call hit /api/* on pywebview's static file server (404), boot()
+// never finished, and buttons never wired. So we re-check the bridge each call
+// and only cache the fetch proxy (which is stable once chosen in hosted mode).
+let _fetchApi = null;
 function api() {
-  if (_api) return _api;
-  if (window.pywebview && window.pywebview.api) {
-    _api = window.pywebview.api;
-  } else {
-    _api = new Proxy({}, { get: (_t, name) => (...args) =>
+  if (window.pywebview && window.pywebview.api) return window.pywebview.api;
+  if (!_fetchApi) {
+    _fetchApi = new Proxy({}, { get: (_t, name) => (...args) =>
       fetch("/api/" + String(name), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(args),
       }).then((r) => r.json()) });
   }
-  return _api;
+  return _fetchApi;
+}
+// Resolve once the transport is usable: the pywebview bridge if it's a desktop
+// window (it's injected shortly after load), otherwise HTTP fetch for a hosted
+// page. Prevents boot() from committing to the fetch fallback during the brief
+// window before the bridge is injected.
+function waitForApi(timeoutMs = 10000) {
+  return new Promise((resolve) => {
+    const start = Date.now();
+    (function poll() {
+      if (window.pywebview && window.pywebview.api && window.pywebview.api.get_init)
+        return resolve("bridge");
+      // No pywebview object at all after a short grace → genuinely hosted.
+      if (!window.pywebview && Date.now() - start > 1000) return resolve("fetch");
+      if (Date.now() - start > timeoutMs) return resolve("timeout");
+      setTimeout(poll, 50);
+    })();
+  });
 }
 const el = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
@@ -53,10 +76,28 @@ const S = {
 /* ---------- init ---------- */
 const blog = (m) => { try { api().log(m); } catch (e) { /* ignore */ } };
 let _booted = false;
+let _booting = false;
 async function boot() {
-  if (_booted) return;
-  _booted = true;
-  blog("boot: start");
+  if (_booted || _booting) return;
+  _booting = true;
+  try {
+    // Don't touch api() until the bridge is injected (desktop) or we've
+    // confirmed there's no bridge coming (hosted) — otherwise we'd stick on the
+    // fetch fallback and hang at "Starting…".
+    const transport = await waitForApi();
+    blog("boot: start (transport=" + transport + ")");
+    await _bootBody();
+    _booted = true;
+    blog("boot: done");
+  } catch (e) {
+    // Leave _booted false so a later trigger (e.g. pywebviewready arriving after
+    // the load fallback) can retry instead of freezing on "Starting…".
+    blog("boot: error " + (e && e.message));
+  } finally {
+    _booting = false;
+  }
+}
+async function _bootBody() {
   const init = await api().get_init();
   blog("boot: got init (hosted=" + !!init.hosted + ", modes=" + (init.hash_modes || []).length + ")");
   S.hosted = !!init.hosted;
@@ -88,11 +129,14 @@ async function boot() {
   wireEvents();
   if (S.hosted) applyHostedMode();
   else renderWordlistDownloads();
-  blog("boot: done");
 }
-// desktop fires pywebviewready; hosted has no such event, so fall back on load.
+// Desktop fires pywebviewready once the bridge is injected; hosted has no such
+// event. Trigger boot() from both — it waits for the right transport internally
+// and is guarded against double-running, so whichever fires first (or both) is
+// safe, and a late pywebviewready can still rescue a load that fired early.
 window.addEventListener("pywebviewready", boot);
-window.addEventListener("load", () => setTimeout(() => { if (!_booted) boot(); }, 300));
+window.addEventListener("load", boot);
+if (document.readyState === "complete") boot();  // listeners added after load
 window.addEventListener("error", (e) => blog("js error: " + (e && e.message)));
 
 function applyHostedMode() {
