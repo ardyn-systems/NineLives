@@ -341,10 +341,12 @@ class Api:
                 if res.get("quit"):
                     self._emit("hbOutput",
                                "[app-update] launching installer; closing NineLives…\n")
-                    try:
-                        self.window.destroy()
-                    except Exception:  # noqa: BLE001
-                        pass
+                    # Force a full process exit so the installer can replace the
+                    # running (otherwise locked) files; destroy() from a worker
+                    # thread is unreliable and may leave the process alive.
+                    import time
+                    time.sleep(1.0)   # let the message reach the UI first
+                    os._exit(0)
                 else:
                     self._emit("hbOutput",
                                "[app-update] downloaded the new AppImage; "

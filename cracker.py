@@ -164,11 +164,12 @@ def _init_worker(target):
 
 
 def _scan_chunk(words):
+    # Return (found_or_None, words_tried) so the driver can count accurately.
     t = _WORKER_TARGET
-    for w in words:
+    for i, w in enumerate(words):
         if t.check(w):
-            return w
-    return None
+            return w, i + 1
+    return None, len(words)
 
 
 # --------------------------------------------------------------------------- #
@@ -209,17 +210,17 @@ def crack(target, wordlist_paths, progress=None, should_stop=None,
                    initargs=(target,))
     try:
         chunk_iter = _chunks(iter_words(wordlist_paths), chunk_size)
-        for result in pool.imap_unordered(_scan_chunk, chunk_iter):
+        for found, n in pool.imap_unordered(_scan_chunk, chunk_iter):
             if should_stop and should_stop():
                 pool.terminate()
                 return None
-            tried += chunk_size
-            if result is not None:
+            tried += n
+            if found is not None:
                 pool.terminate()
                 if progress:
-                    progress(tried, result,
+                    progress(tried, found,
                              tried / max(1e-6, time.time() - start))
-                return result
+                return found
             if progress:
                 progress(tried, None, tried / max(1e-6, time.time() - start))
         return None
