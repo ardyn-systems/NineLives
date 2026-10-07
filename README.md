@@ -165,9 +165,12 @@ If the app won't start, hangs, or behaves oddly, check the startup log:
 ```
 
 It records each startup step (last line = where it got stuck), so it pinpoints
-launch problems that leave no visible error. Runtime data (settings, potfile,
-extracted captures, hashcat updates) also lives in that `NineLives` folder, not
-in the install directory.
+launch problems that leave no visible error. All writable runtime data lives in
+that `NineLives` folder, not the install directory: settings, potfile, extracted
+captures, hashcat updates, and the WebView2 browser-data folder. The app also
+switches its working directory there on launch, because WebView2 writes into the
+working directory and a double-click would otherwise leave it read-only (which
+hangs startup).
 
 ## Scope
 
