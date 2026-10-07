@@ -191,6 +191,18 @@ input:focus, select:focus { border-color:var(--accent); outline:none; }
 .cap-sub { color:var(--muted); font-size:12px; font-family:ui-monospace,"Cascadia Mono",Consolas,monospace; }
 .cap-badges { display:flex; gap:.35rem; margin-left:.4rem; }
 
+/* ---------- Wordlist downloads (Settings) ---------- */
+.wl-downloads { margin-top:.2rem; }
+.wl-dl { display:flex; align-items:center; gap:.6rem; padding:.55rem .2rem;
+  border-top:1px solid var(--line); }
+.wl-dl-info { flex:1; min-width:0; line-height:1.35; }
+.wl-dl-size { color:var(--muted); font-size:12px; margin-left:.35rem; }
+.wl-dl-desc { color:var(--muted); font-size:12px; }
+.wl-dl-status { font-size:12px; min-height:0; }
+.wl-dl-status:empty { display:none; }
+.wl-dl-btn { align-self:center; white-space:nowrap; text-decoration:none; }
+.wl-dl.done .wl-dl-info > b::after { content:" ✓"; color:var(--accent); }
+
 /* ---------- Modal (in-page confirm) ---------- */
 .modal { position:fixed; inset:0; z-index:100; display:flex; align-items:center;
   justify-content:center; background:rgba(0,0,0,0.55); }

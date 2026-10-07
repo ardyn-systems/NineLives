@@ -38,6 +38,7 @@ HTTP_ALLOWED = {
     "build_command", "run", "stop", "show_recovered", "check_update",
     "install_update", "check_self_update", "import_capture_bytes",
     "get_captures", "use_capture", "remove_capture", "log",
+    "list_wordlist_downloads",
 }
 
 

@@ -17,8 +17,9 @@ Grab the latest build from the [Releases page](https://github.com/ardyn-systems/
 - **Linux:** `NineLives-<ver>-x86_64.AppImage` (mark executable and run; needs
   `webkit2gtk` present) or the `-linux-x86_64.tar.gz`.
 
-Each build **bundles hashcat and a curated wordlist set**, so it works out of the
-box. Verify downloads against `SHA256SUMS-<os>.txt`.
+Each build **bundles hashcat and a small wordlist starter set**, so it cracks out
+of the box; grab bigger lists (rockyou etc.) from the Settings tab when you want
+them. Verify downloads against `SHA256SUMS-<os>.txt`.
 
 ## The Crack tab
 
@@ -60,8 +61,12 @@ neon, plus Terrain, Midnight, Daylight, and Blueprint. Your choice is remembered
 
 ![The Settings tab](images/settings.png)
 
-- **Wordlists** — point at your SecLists folder (installed builds ship a bundled
-  set already).
+- **Wordlists** — installed builds ship a small **starter set**. Use **Download**
+  next to a list (rockyou, xato-10M, darkc0de) to fetch the bigger lists from the
+  SecLists project; they land in your data dir and appear in the dropdowns
+  automatically. Or point the folder box at your own SecLists checkout — all
+  three sources feed the dropdowns. (Downloads run in the desktop app, not the
+  hosted demo.)
 - **hashcat** — check for and install hashcat updates.
 - **NineLives** — shows the version and checks the project's GitHub releases for
   app updates.
