@@ -51,16 +51,21 @@ const S = {
 };
 
 /* ---------- init ---------- */
+const blog = (m) => { try { api().log(m); } catch (e) { /* ignore */ } };
 let _booted = false;
 async function boot() {
   if (_booted) return;
   _booted = true;
+  blog("boot: start");
   const init = await api().get_init();
+  blog("boot: got init (hosted=" + !!init.hosted + ", modes=" + (init.hash_modes || []).length + ")");
   S.hosted = !!init.hosted;
   if (!init.acknowledged) {
+    blog("boot: showing consent");
     const ok = await uiConfirm(
       "NineLives audits hashes from equipment you own or are explicitly authorized to test.\n\nConfirm you'll use it only that way?",
       "I agree", "Not now");
+    blog("boot: consent = " + ok);
     if (ok) api().acknowledge();
   }
   S.themes = init.themes;
@@ -70,6 +75,7 @@ async function boot() {
   buildThemeMenu(init.current_theme);
   buildHashTypes();
   buildAttackSeg();
+  blog("boot: menus built");
   el("status").innerHTML = init.hashcat.present
     ? `hashcat <b>${esc(init.hashcat.version || "?")}</b>`
     : `hashcat <b>not installed</b> — dropdowns work offline`;
@@ -81,10 +87,12 @@ async function boot() {
   await selectAttack(0);
   wireEvents();
   if (S.hosted) applyHostedMode();
+  blog("boot: done");
 }
 // desktop fires pywebviewready; hosted has no such event, so fall back on load.
 window.addEventListener("pywebviewready", boot);
 window.addEventListener("load", () => setTimeout(() => { if (!_booted) boot(); }, 300));
+window.addEventListener("error", (e) => blog("js error: " + (e && e.message)));
 
 function applyHostedMode() {
   el("status").innerHTML = "hosted · <b>explore + extract</b> — crack in the desktop app";

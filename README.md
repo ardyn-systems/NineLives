@@ -155,6 +155,20 @@ git tag v0.1.0 && git push origin v0.1.0   # triggers the release build
 - Rule-file dropdown from hashcat's bundled `rules/`
 - Per-mode example-hash preview and auto hash-type detection
 
+## Troubleshooting
+
+If the app won't start, hangs, or behaves oddly, check the startup log:
+
+```
+%LOCALAPPDATA%\NineLives\startup.log        (Windows)
+~/.local/share/NineLives/startup.log        (Linux)
+```
+
+It records each startup step (last line = where it got stuck), so it pinpoints
+launch problems that leave no visible error. Runtime data (settings, potfile,
+extracted captures, hashcat updates) also lives in that `NineLives` folder, not
+in the install directory.
+
 ## Scope
 
 Only for hashes from equipment you own or are explicitly authorized to test.
