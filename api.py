@@ -29,8 +29,8 @@ import themes
 import captures
 import hashcat_iface as hc
 
-POTFILE = os.path.join(hc.APP_DIR, "ninelives.potfile")
-CAPT_DIR = os.path.join(hc.APP_DIR, "captures")
+POTFILE = os.path.join(hc.DATA_DIR, "ninelives.potfile")
+CAPT_DIR = os.path.join(hc.DATA_DIR, "captures")
 
 
 class Api:
@@ -262,7 +262,7 @@ class Api:
             try:
                 self.proc = subprocess.Popen(
                     cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                    text=True, bufsize=1, cwd=hc.APP_DIR)
+                    text=True, bufsize=1, cwd=hc.DATA_DIR)
                 for line in self.proc.stdout:
                     self._emit("hbOutput", line)
                 self.proc.wait()
