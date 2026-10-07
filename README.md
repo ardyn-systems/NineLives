@@ -9,6 +9,12 @@ list and options come from hashcat itself, and the bundled hashcat engine
 auto-updates. Pick a hash type, pick an attack, pick a wordlist from a dropdown,
 click Run.
 
+**Download:** [Releases](https://github.com/ardyn-systems/NineLives/releases)
+(Windows installer/portable, Linux AppImage/tarball).
+**Docs:** [User guide](docs/user-guide.md) · [Hosting](docs/hosting.md).
+Any UI change updates the guide + screenshots in the same PR
+(`python docs/screenshots.py`).
+
 ## Design goals (and how they're met)
 
 | Goal | How |
