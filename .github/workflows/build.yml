@@ -52,8 +52,10 @@ jobs:
       - name: Smoke-test the frozen build
         shell: pwsh
         run: |
-          & dist\NineLives\NineLives.exe --smoke-test
-          $code = $LASTEXITCODE
+          # The exe is windowed (no console), so `&` doesn't wait or return an
+          # exit code — use Start-Process -Wait -PassThru to get ExitCode.
+          $p = Start-Process -FilePath dist\NineLives\NineLives.exe -ArgumentList '--smoke-test' -Wait -PassThru
+          $code = $p.ExitCode
           $log = "$env:LOCALAPPDATA\NineLives\smoke-test.log"
           if (Test-Path $log) { Get-Content $log }
           if ($code -ne 0) { throw "smoke test failed ($code)" }
