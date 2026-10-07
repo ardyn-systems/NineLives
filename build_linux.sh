@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build the Ubuntu/Linux HashBench bundle (tarball).
+# Build the Ubuntu/Linux NineLives bundle (tarball).
 #
 # Prereqs:  sudo apt install p7zip-full git python3-gi gir1.2-webkit2-4.1
 #           (gir1.2-webkit2-4.0 on older Ubuntu) — pywebview's GTK/WebKit backend
@@ -25,12 +25,12 @@ ADD_DATA=(--add-data "webui:webui")
 if [ -d vendor ]; then ADD_DATA+=(--add-data "vendor:vendor"); fi
 
 echo "== Building with PyInstaller =="
-pyinstaller --noconfirm --windowed --name HashBench \
+pyinstaller --noconfirm --windowed --name NineLives \
   --collect-all webview \
   "${ADD_DATA[@]}" \
-  hashbench.py
+  ninelives.py
 
 echo "== Packaging tarball =="
-( cd dist && tar czf HashBench-linux-x86_64.tar.gz HashBench )
-echo "Built: dist/HashBench/HashBench"
-echo "Tarball: dist/HashBench-linux-x86_64.tar.gz"
+( cd dist && tar czf NineLives-linux-x86_64.tar.gz NineLives )
+echo "Built: dist/NineLives/NineLives"
+echo "Tarball: dist/NineLives-linux-x86_64.tar.gz"

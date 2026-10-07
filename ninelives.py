@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-HashBench launcher — a pywebview desktop window hosting the NetSeer-styled web
+NineLives launcher — a pywebview desktop window hosting the NetSeer-styled web
 UI (webui/) backed by the Python API (api.py).
 
 Modules:
@@ -13,7 +13,7 @@ Modules:
   themes.py         NetSeer theme tokens (easter-egg themes excluded)
   settings.py       shared JSON settings
 
-Run:  python hashbench.py
+Run:  python ninelives.py
 """
 
 import os
@@ -47,7 +47,7 @@ def main():
     # Note: no background_color — some WebView2 runtimes lack the controller
     # interface it probes (E_NOINTERFACE); the page's own CSS paints the bg.
     window = webview.create_window(
-        "HashBench",
+        "NineLives",
         url=_index_path(),
         js_api=bridge,
         width=1120,
@@ -56,8 +56,8 @@ def main():
     )
     bridge.bind(window)
     # gui=None lets pywebview pick the platform backend (EdgeChromium on Windows,
-    # GTK/WebKit on Linux). debug mode is on when HASHBENCH_DEBUG is set.
-    webview.start(debug=bool(os.environ.get("HASHBENCH_DEBUG")))
+    # GTK/WebKit on Linux). debug mode is on when NINELIVES_DEBUG is set.
+    webview.start(debug=bool(os.environ.get("NINELIVES_DEBUG")))
 
 
 if __name__ == "__main__":

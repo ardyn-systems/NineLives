@@ -1,4 +1,4 @@
-# Build the Windows HashBench bundle + installer.
+# Build the Windows NineLives bundle + installer.
 #
 # Prereqs:  python -m pip install pyinstaller py7zr
 #           (optional) Inno Setup 6 for the installer: https://jrsoftware.org/isdl.php
@@ -25,12 +25,13 @@ $addData = @("--add-data", "webui;webui")
 if (Test-Path "vendor") { $addData += @("--add-data", "vendor;vendor") }
 
 Write-Host "== Building with PyInstaller =="
-pyinstaller --noconfirm --windowed --name HashBench `
+pyinstaller --noconfirm --windowed --name NineLives `
+    --icon brand\ninelives.ico `
     --collect-all webview `
     @addData `
-    hashbench.py
+    ninelives.py
 
-Write-Host "Built: dist\HashBench\HashBench.exe"
+Write-Host "Built: dist\NineLives\NineLives.exe"
 
 # Build the installer if Inno Setup is available.
 $iscc = Get-Command iscc -ErrorAction SilentlyContinue
@@ -41,8 +42,8 @@ if (-not $iscc -and (Test-Path "C:\Program Files (x86)\Inno Setup 6\ISCC.exe")) 
 if ($iscc) {
     Write-Host "== Building installer with Inno Setup =="
     & $iscc installer.iss
-    Write-Host "Installer: dist\HashBench-Setup.exe"
+    Write-Host "Installer: dist\NineLives-Setup.exe"
 } else {
     Write-Host "Inno Setup (iscc) not found - skipping installer."
-    Write-Host "Install Inno Setup 6 to produce dist\HashBench-Setup.exe."
+    Write-Host "Install Inno Setup 6 to produce dist\NineLives-Setup.exe."
 }

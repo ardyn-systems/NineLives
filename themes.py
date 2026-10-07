@@ -13,6 +13,30 @@ approximation of NetSeer's translucent accent (Tk has no alpha on fills).
 """
 
 THEMES = {
+    "synthwave": {
+        "name": "Synthwave", "note": "Neon synthwave (default)", "scheme": "dark",
+        "swatch": ["#0a0a14", "#22d3ee", "#ff4df0", "#a78bfa"],
+        "tokens": {
+            "bg": "#0a0a14", "panel": "#12121f", "raised": "#1a1a2e",
+            "hover": "#24243e", "line": "#2b2b48", "line_strong": "#3d3d63",
+            "text": "#e9e9fb", "muted": "#9a9ac6", "faint": "#63638f",
+            "accent": "#22d3ee", "accent_hover": "#67e8f9", "on_accent": "#061318",
+            "accent_soft": "#0e2a33", "danger": "#ff5d8f", "danger_soft": "#3a1522",
+            "select": "#ff4df0",
+        },
+    },
+    "cyberpunk": {
+        "name": "Cyberpunk", "note": "High-voltage magenta", "scheme": "dark",
+        "swatch": ["#0c0a10", "#ff2bd6", "#30e0ff", "#f7ff3c"],
+        "tokens": {
+            "bg": "#0c0a10", "panel": "#16101f", "raised": "#1e1630",
+            "hover": "#281c40", "line": "#321f4c", "line_strong": "#472a66",
+            "text": "#f5e9ff", "muted": "#b89ad0", "faint": "#7a5f96",
+            "accent": "#ff2bd6", "accent_hover": "#ff6be6", "on_accent": "#1a0416",
+            "accent_soft": "#2e0e2a", "danger": "#ff4040", "danger_soft": "#351216",
+            "select": "#30e0ff",
+        },
+    },
     "terrain": {
         "name": "Terrain", "note": "Warm topographic", "scheme": "dark",
         "swatch": ["#15140f", "#e0a84a", "#9cc27a", "#7fb6c9"],
@@ -63,9 +87,10 @@ THEMES = {
     },
 }
 
-# NetSeer's menu order; also the default.
-ORDER = ["terrain", "midnight", "daylight", "blueprint"]
-DEFAULT = "terrain"
+# Menu order; synthwave is the NineLives default, cyberpunk next, then the
+# four NetSeer-derived themes.
+ORDER = ["synthwave", "cyberpunk", "terrain", "midnight", "daylight", "blueprint"]
+DEFAULT = "synthwave"
 
 
 def get(theme_id):
