@@ -55,6 +55,7 @@ async function boot() {
   el("wl-count").textContent = `${init.wordlists_count} wordlists indexed`;
   el("hc-info").textContent = init.hashcat.present
     ? `Found: ${init.hashcat.version}` : "Not installed yet.";
+  if (el("app-version")) el("app-version").textContent = init.app_version || "—";
   await selectAttack(0);
   wireEvents();
   if (S.hosted) applyHostedMode();
@@ -315,6 +316,27 @@ function wireEvents() {
   };
   el("update-btn").addEventListener("click", doUpdate);
   el("update-btn2").addEventListener("click", doUpdate);
+
+  const appBtn = el("app-update-btn");
+  if (appBtn) appBtn.addEventListener("click", async () => {
+    el("app-update-msg").textContent = "checking…";
+    const r = await api().check_self_update();
+    if (r.error) { el("app-update-msg").textContent = r.error; return; }
+    if (!r.available) {
+      el("app-update-msg").textContent = `Up to date (v${r.current}).`; return;
+    }
+    if (S.hosted) {
+      el("app-update-msg").innerHTML =
+        `v${esc(r.latest)} available — <a href="${esc(r.url)}" target="_blank">download from Releases</a>.`;
+      return;
+    }
+    if (confirm(`NineLives v${r.latest} is available (you have v${r.current}).\n\n`
+                + "Download and install now? The app will close to run the installer.")) {
+      el("app-update-msg").textContent = `installing v${r.latest}…`;
+      out(`\n[app-update] updating to v${r.latest}…\n`, "cmd");
+      await api().install_self_update();
+    }
+  });
 }
 async function rescan() {
   const r = await api().set_seclists(el("seclists").value.trim());

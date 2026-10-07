@@ -23,6 +23,8 @@ import settings
 import compat
 import wordlists
 import updater
+import selfupdate
+import version as appver
 import themes
 import captures
 import hashcat_iface as hc
@@ -73,6 +75,7 @@ class Api:
             # hosted = running as a web server (no desktop window): explore +
             # extract only, cracking happens in the desktop app.
             "hosted": self.window is None,
+            "app_version": appver.__version__,
         }
 
     def acknowledge(self):
@@ -315,3 +318,38 @@ class Api:
 
         threading.Thread(target=worker, daemon=True).start()
         return {"started": True}
+
+    # ---- app self-update ---------------------------------------------------
+    def check_self_update(self):
+        return selfupdate.check()
+
+    def install_self_update(self):
+        if self.window is None:
+            return {"error": "Updates install in the desktop app only."}
+        info = selfupdate.check()
+        if not info.get("available") or not info.get("asset"):
+            return {"error": "No update available for this platform."}
+        asset = info["asset"]
+
+        def worker():
+            try:
+                res = selfupdate.download_and_launch(
+                    asset["url"], asset["name"],
+                    progress=lambda m: self._emit("hbOutput", f"[app-update] {m}\n"))
+                self._emit("hbOutput", f"[app-update] saved {res['path']}\n")
+                if res.get("quit"):
+                    self._emit("hbOutput",
+                               "[app-update] launching installer; closing NineLives…\n")
+                    try:
+                        self.window.destroy()
+                    except Exception:  # noqa: BLE001
+                        pass
+                else:
+                    self._emit("hbOutput",
+                               "[app-update] downloaded the new AppImage; "
+                               "replace the current one to finish.\n")
+            except Exception as e:  # noqa: BLE001
+                self._emit("hbOutput", f"[app-update] failed: {e}\n")
+
+        threading.Thread(target=worker, daemon=True).start()
+        return {"started": True, "latest": info["latest"]}
