@@ -31,6 +31,9 @@ VERSION_FILE = os.path.join(VENDOR_DIR, "VERSION")
 GITHUB_LATEST = "https://api.github.com/repos/hashcat/hashcat/releases/latest"
 DL_TEMPLATE = "https://hashcat.net/files/hashcat-{ver}.7z"
 UA = {"User-Agent": "NineLives-updater"}
+# Used when the GitHub API can't be reached (e.g. rate-limited CI runner) so a
+# build never fails just because the "latest version" lookup flaked.
+HASHCAT_FALLBACK = "6.2.6"
 
 
 def _norm(ver):
@@ -140,9 +143,8 @@ def install(version=None, progress=None, archive_path=None, dest=None):
     """
     dest = dest or VENDOR_DIR
     version_file = os.path.join(dest, "VERSION")
-    version = _norm(version) or latest_version()
-    if not version and not archive_path:
-        raise RuntimeError("Could not determine a hashcat version to install.")
+    if not archive_path:
+        version = _norm(version) or latest_version() or HASHCAT_FALLBACK
 
     os.makedirs(dest, exist_ok=True)
     tmpdir = tempfile.mkdtemp(prefix="ninelives_")
