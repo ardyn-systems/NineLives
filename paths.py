@@ -14,6 +14,12 @@ import sys
 
 
 def _app_dir():
+    # Bundled read-only resources (webui/, vendor/). PyInstaller puts added data
+    # under sys._MEIPASS — the temp dir for onefile, and the _internal dir for
+    # onedir (v6), NOT next to the executable.
+    meipass = getattr(sys, "_MEIPASS", None)
+    if meipass:
+        return meipass
     if getattr(sys, "frozen", False):
         return os.path.dirname(sys.executable)
     return os.path.dirname(os.path.abspath(__file__))
