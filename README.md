@@ -165,12 +165,17 @@ If the app won't start, hangs, or behaves oddly, check the startup log:
 ```
 
 It records each startup step (last line = where it got stuck), so it pinpoints
-launch problems that leave no visible error. All writable runtime data lives in
-that `NineLives` folder, not the install directory: settings, potfile, extracted
-captures, hashcat updates, and the WebView2 browser-data folder. The app also
-switches its working directory there on launch, because WebView2 writes into the
-working directory and a double-click would otherwise leave it read-only (which
-hangs startup).
+launch problems that leave no visible error. A healthy launch ends with `window
+shown (WebView2 ready)` then `page loaded`; if it stops at `calling
+webview.start()` and a `WARN window not shown after 25s` line follows, the
+embedded WebView2 browser stalled — the companion `pywebview.log` in the same
+folder logs the browser's own startup steps (last line = where it stalled).
+
+All writable runtime data lives in that `NineLives` folder, not the install
+directory: settings, potfile, extracted captures, hashcat updates, the WebView2
+browser-data folder, and the two logs above. The app also switches its working
+directory there on launch, because WebView2 writes into the working directory
+and a double-click would otherwise leave it read-only.
 
 ## Scope
 

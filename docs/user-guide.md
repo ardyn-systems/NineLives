@@ -80,6 +80,14 @@ where it stopped:
 - **Windows:** `%LOCALAPPDATA%\NineLives\startup.log`
 - **Linux:** `~/.local/share/NineLives/startup.log`
 
+A healthy launch ends with `window shown (WebView2 ready)` followed by `page
+loaded`. If instead the log stops at `calling webview.start()` and then shows
+`WARN window not shown after 25s`, the embedded browser (WebView2) stalled while
+starting up — the companion `pywebview.log` in the same folder records the
+browser's own startup steps, and its last line pinpoints where. A first launch
+right after installing can be slow while the OS finishes indexing the new files;
+if it still won't show a window on later launches, send both logs.
+
 That same `NineLives` folder holds your settings, potfile, extracted captures,
 and the WebView2 browser data (it's kept out of the install directory so nothing
 needs admin rights).

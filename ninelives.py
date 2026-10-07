@@ -46,7 +46,21 @@ def _run_desktop():
         def filter(self, record):
             return "window.native" not in record.getMessage()
 
-    logging.getLogger("pywebview").addFilter(_DropNativeIntrospection())
+    pwlog = logging.getLogger("pywebview")
+    pwlog.addFilter(_DropNativeIntrospection())
+    # A --windowed frozen app has no console, so pywebview's own debug output
+    # (normally stderr) is invisible — which is why a hang *inside* webview.start()
+    # left no trace. Route pywebview's DEBUG log to a file so each internal step
+    # is recorded; the last line pinpoints where start() blocks.
+    try:
+        _pw = logging.FileHandler(
+            os.path.join(hc.DATA_DIR, "pywebview.log"), mode="w", encoding="utf-8")
+        _pw.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s"))
+        pwlog.addHandler(_pw)
+        pwlog.setLevel(logging.DEBUG)
+        pwlog.propagate = False
+    except Exception:  # noqa: BLE001
+        pass
 
     # WebView2 creates its user-data folder in the process working directory by
     # default. On a double-click that cwd is System32, and when installed the
@@ -78,6 +92,37 @@ def _run_desktop():
         js_api=bridge, width=1120, height=860, min_size=(900, 640))
     log.log("desktop: window created; binding")
     bridge.bind(window)
+
+    # Record the window lifecycle from the Python side. Until now startup.log
+    # stopped at "calling webview.start()" whether start() succeeded or hung —
+    # there was no success/failure marker. These events make the difference
+    # explicit: "window shown" (and "page loaded") means WebView2 initialised;
+    # their absence, plus the watchdog line below, means it stalled.
+    try:
+        window.events.shown += lambda: log.log("desktop: window shown (WebView2 ready)")
+        window.events.loaded += lambda: log.log("desktop: page loaded")
+        window.events.closing += lambda: log.log("desktop: window closing")
+    except Exception:  # noqa: BLE001
+        pass
+
+    # Watchdog: if the window hasn't shown within 25s, WebView2 init has stalled
+    # (the symptom users saw as "Not Responding as soon as I click"). Record it
+    # with a pointer to pywebview.log so the exact internal step is recoverable,
+    # instead of leaving an opaque hang at webview.start().
+    import threading
+    shown = threading.Event()
+    try:
+        window.events.shown += shown.set
+    except Exception:  # noqa: BLE001
+        pass
+
+    def _watchdog():
+        if not shown.wait(25):
+            log.log("desktop: WARN window not shown after 25s — WebView2 "
+                    "initialisation stalled (see pywebview.log for the last step)")
+
+    threading.Thread(target=_watchdog, daemon=True).start()
+
     log.log("desktop: calling webview.start()")
     webview.start(storage_path=wv2, private_mode=False,
                   debug=bool(os.environ.get("NINELIVES_DEBUG")))
