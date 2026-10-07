@@ -34,9 +34,10 @@ Any UI change updates the guide + screenshots in the same PR
 ## Modules
 
 ```
-ninelives.py       launcher (pywebview desktop window)
+ninelives.py       launcher: starts the local server and shows it in a window
+server.py          HTTP server + /api/* dispatch and the event stream
 webui/             NetSeer-styled front-end — index.html, styles.css, app.js
-api.py             JS ↔ Python bridge exposed to the web UI
+api.py             the backend the server calls (crack, extract, catalog, …)
 hashcat_iface.py   locate/run hashcat; parse --help → live hash catalog
 compat.py          attack-mode ↔ stackable-option matrix + explanations
 wordlists.py       SecLists catalog (bundled + downloaded + your own) + suggestions
@@ -47,10 +48,15 @@ settings.py        shared JSON settings
 cracker.py         optional pure-Python WPA engine (works with no hashcat)
 ```
 
-The UI is a real web view: `webui/styles.css` carries NetSeer's four shipping
-themes as `[data-theme]` token sets (the easter-egg themes are excluded), and
-`api.py` bridges the page to the backend. Theme switching is instant and
-persisted.
+**Architecture (like NetSeer).** The desktop app runs a small HTTP server on
+`127.0.0.1` and shows it in a window (WebView2 on Windows, WebKitGTK on Linux,
+falling back to your default browser). The page talks to the backend over HTTP
+(`fetch`), and server-pushed output (live hashcat lines, catalog refresh,
+download progress) streams back over a long-poll of `/api/events`. There is no
+JS↔Python bridge, so a slow window start can't strand the UI. The same server,
+run with `--host`, is the public explore-and-extract deployment — where cracking
+and filesystem actions are disabled. `webui/styles.css` carries NetSeer's four
+shipping themes as `[data-theme]` token sets (easter-egg themes excluded).
 
 Inspect the stackability matrix without the GUI:
 
@@ -174,11 +180,13 @@ If the app won't start, hangs, or behaves oddly, check the startup log:
 ```
 
 It records each startup step (last line = where it got stuck), so it pinpoints
-launch problems that leave no visible error. A healthy launch ends with `window
-shown (WebView2 ready)` then `page loaded`; if it stops at `calling
-webview.start()` and a `WARN window not shown after 25s` line follows, the
-embedded WebView2 browser stalled — the companion `pywebview.log` in the same
-folder logs the browser's own startup steps (last line = where it stalled).
+launch problems that leave no visible error. A healthy launch starts the local
+server (`desktop: serving http://127.0.0.1:…`), then shows the window
+(`window shown (WebView2 ready)`, `page loaded`) and the page boots
+(`js: boot: done`). If the window line never arrives and a `WARN window not
+shown after 25s` line follows, the embedded WebView2 browser stalled — and the
+app falls back to opening in your default browser. The companion `pywebview.log`
+in the same folder logs the browser's own startup steps.
 
 All writable runtime data lives in that `NineLives` folder, not the install
 directory: settings, potfile, extracted captures, hashcat updates, the WebView2

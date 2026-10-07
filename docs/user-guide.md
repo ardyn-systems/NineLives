@@ -25,9 +25,11 @@ them. Verify downloads against `SHA256SUMS-<os>.txt`.
 
 ![The Crack tab](images/overview.png)
 
-1. **Target** — choose the **Hash file** (e.g. a `.hc22000`) and the **Hash
-   type**. The type box is searchable: type `WPA`, `NTLM`, or a mode number.
-   The full hash-mode list comes from hashcat itself.
+1. **Target** — set the **Hash file** and the **Hash type**. For WPA, import a
+   capture on the **Captures** tab and click **Use in Crack** to fill this in
+   automatically; for other hashes, **Choose…** a hash file (it's copied into
+   your data folder). The type box is searchable: type `WPA`, `NTLM`, or a mode
+   number — the full hash-mode list comes from hashcat itself.
 2. **Attack** — pick how candidates are generated. The panels below **adapt to
    this choice**: dictionary shows rule options, mask modes show charsets, and so
    on — so you never guess which flags combine.
@@ -85,19 +87,18 @@ where it stopped:
 - **Windows:** `%LOCALAPPDATA%\NineLives\startup.log`
 - **Linux:** `~/.local/share/NineLives/startup.log`
 
-A healthy launch ends with `window shown (WebView2 ready)`, then
-`boot: start (transport=bridge)` and `boot: done` once the UI has loaded its
-data. If instead the log stops at `calling webview.start()` and then shows
-`WARN window not shown after 25s`, the embedded browser (WebView2) stalled while
-starting up — the companion `pywebview.log` in the same folder records the
-browser's own startup steps, and its last line pinpoints where. A first launch
+A healthy launch starts the local server (`desktop: serving http://127.0.0.1:…`),
+shows the window (`window shown (WebView2 ready)`, `page loaded`), and boots the
+page (`js: boot: done`). If the window line never arrives and a `WARN window not
+shown after 25s` line follows, the embedded browser (WebView2) stalled — NineLives
+then **falls back to opening in your default browser**, so it still runs. The
+companion `pywebview.log` records the browser's own startup steps. A first launch
 right after installing can be slow while the OS finishes indexing the new files;
-if it still won't show a window on later launches, send both logs.
+if it still won't open on later launches, send both logs.
 
-If the window appears but stays on **“Starting…”** with the buttons unresponsive,
-the page couldn't reach the app's Python side; the startup log will be missing
-the `boot: done` line. This is normally transient — closing and reopening the app
-clears it — and the log/`pywebview.log` pair will show how far boot got.
+(NineLives now talks to its backend over a local HTTP server instead of an
+in-window bridge, so the old "stuck on Starting…" state can't happen — the page
+isn't shown until the server is answering.)
 
 That same `NineLives` folder holds your settings, potfile, extracted captures,
 and the WebView2 browser data (it's kept out of the install directory so nothing
