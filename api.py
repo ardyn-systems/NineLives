@@ -334,9 +334,13 @@ class Api:
 
         def worker():
             try:
+                # Run from hashcat's work dir: it looks for its OpenCL kernels /
+                # modules relative to the cwd and writes its runtime files there,
+                # so running from DATA_DIR made every crack exit instantly with
+                # "./OpenCL/: No such file or directory".
                 self.proc = subprocess.Popen(
                     cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                    text=True, bufsize=1, cwd=hc.DATA_DIR)
+                    text=True, bufsize=1, cwd=hc.hashcat_workdir())
                 for line in self.proc.stdout:
                     self._emit("hbOutput", line)
                 self.proc.wait()

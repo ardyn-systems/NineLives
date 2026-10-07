@@ -48,10 +48,100 @@ def find_hashcat():
     return ""
 
 
+# --------------------------------------------------------------------------- #
+# Run directory
+# --------------------------------------------------------------------------- #
+# hashcat resolves its shared folders (OpenCL kernels, modules, charsets, rules,
+# tunings, hashcat.hcstat2, ...) relative to the CURRENT WORKING DIRECTORY, and
+# also writes its own runtime files there (hashcat.pid, the compiled-kernel
+# cache, restore/induct files). The bundled hashcat lives in a read-only install
+# dir, so running from it fails to write ("Permission denied"); running from the
+# data dir fails to read ("./OpenCL/: No such file or directory"). So we run from
+# a writable per-user work dir with the read-only shared folders linked in
+# (Windows directory junctions / POSIX symlinks — neither needs admin) and the
+# small data files copied. Without this, every crack exits instantly doing
+# nothing.
+WORKDIR = os.path.join(DATA_DIR, "hcwork")
+# Written by hashcat into cwd at runtime, or the binaries we call by full path —
+# never linked/copied from the install dir.
+_WORK_SKIP = {"hashcat.exe", "hashcat.bin", "kernels", "hashcat.pid",
+              "hashcat.induct", "hashcat.log", "hashcat.restore",
+              "hashcat.dictstat2", "hashcat.potfile"}
+
+
+def _rm_link(dst):
+    """Remove a previously linked entry without touching its target. A Windows
+    junction is removed with rmdir (removes the link, keeps the target)."""
+    if not os.path.lexists(dst):
+        return
+    try:
+        if os.path.islink(dst):
+            os.unlink(dst)
+        elif os.path.isdir(dst):
+            os.rmdir(dst)          # junction or empty dir
+        else:
+            os.remove(dst)
+    except OSError:
+        pass
+
+
+def _link_dir(src, dst):
+    _rm_link(dst)
+    try:
+        if sys.platform.startswith("win"):
+            subprocess.run(["cmd", "/c", "mklink", "/J", dst, src],
+                           capture_output=True, check=False)
+        else:
+            os.symlink(src, dst)
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def hashcat_workdir():
+    """A writable directory to run hashcat from, with its read-only shared
+    folders linked in. Rebuilt only when the hashcat location changes (first run
+    or after an update), tracked by a marker file; otherwise returned as-is."""
+    try:
+        os.makedirs(WORKDIR, exist_ok=True)
+    except OSError:
+        return DATA_DIR
+    path = find_hashcat()
+    hc_dir = os.path.dirname(path) if path else ""
+    if not hc_dir or not os.path.isdir(hc_dir):
+        return WORKDIR
+    marker = os.path.join(WORKDIR, ".hcsrc")
+    prev = ""
+    try:
+        with open(marker, encoding="utf-8") as fh:
+            prev = fh.read().strip()
+    except OSError:
+        pass
+    if prev == hc_dir:
+        return WORKDIR              # already prepared for this hashcat
+    for name in os.listdir(hc_dir):
+        if name in _WORK_SKIP:
+            continue
+        src = os.path.join(hc_dir, name)
+        dst = os.path.join(WORKDIR, name)
+        try:
+            if os.path.isdir(src):
+                _link_dir(src, dst)           # junction / symlink (instant)
+            elif os.path.isfile(src):
+                shutil.copyfile(src, dst)      # small data files (e.g. .hcstat2)
+        except Exception:  # noqa: BLE001
+            pass
+    try:
+        with open(marker, "w", encoding="utf-8") as fh:
+            fh.write(hc_dir)
+    except OSError:
+        pass
+    return WORKDIR
+
+
 def _run_text(path, args, timeout=60):
     try:
         return subprocess.run([path] + args, capture_output=True, text=True,
-                              timeout=timeout, cwd=os.path.dirname(path) or None)
+                              timeout=timeout, cwd=hashcat_workdir())
     except Exception:  # noqa: BLE001
         return None
 
