@@ -59,8 +59,11 @@ class Handler(BaseHTTPRequestHandler):
 
     def _safe_webui(self, path):
         rel = path.lstrip("/") or "index.html"
+        root = os.path.normpath(WEBUI)
         full = os.path.normpath(os.path.join(WEBUI, rel))
-        if not full.startswith(os.path.normpath(WEBUI)):
+        # Contain to the web root: require a path-separator boundary so a
+        # sibling like "<root>_backup" can't pass a bare prefix check.
+        if full != root and not full.startswith(root + os.sep):
             return None
         return full if os.path.isfile(full) else None
 
@@ -90,7 +93,9 @@ class Handler(BaseHTTPRequestHandler):
         for e in settings.get("captures_index", []):
             if e["id"] == entry_id:
                 p = e["path"]
-                if os.path.normpath(p).startswith(os.path.normpath(CAPT_DIR)) \
+                root = os.path.normpath(CAPT_DIR)
+                np = os.path.normpath(p)
+                if (np == root or np.startswith(root + os.sep)) \
                         and os.path.isfile(p):
                     with open(p, "rb") as fh:
                         data = fh.read()
@@ -112,6 +117,9 @@ class Handler(BaseHTTPRequestHandler):
         method = parsed.path[len("/api/"):]
         if method not in HTTP_ALLOWED:
             return self._json({"error": f"method not allowed: {method}"}, 403)
+        if "chunked" in self.headers.get("Transfer-Encoding", "").lower():
+            return self._json({"error": "chunked uploads not supported; "
+                               "send a Content-Length"}, 411)
         try:
             length = int(self.headers.get("Content-Length", 0))
             if length > MAX_UPLOAD:

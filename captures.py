@@ -99,10 +99,6 @@ def _strip_to_dot11(linktype, pkt):
     return None  # ethernet handled separately if ever needed
 
 
-def _mac(b):
-    return b
-
-
 class Dot11:
     __slots__ = ("type", "subtype", "to_ds", "from_ds", "protected",
                  "addr1", "addr2", "addr3", "body")
@@ -262,7 +258,11 @@ def _assemble(essid_by_bssid, handshakes):
             lines.append(ln)
             net["pmkid"] = True
             net["lines"].append(ln)
-        if hs.anonce and hs.mic and hs.eapol and hs.keyver != 3:
+        # Emit every 4-way handshake; hashcat mode 22000 handles all key
+        # descriptor versions (incl. 3 = AES-CMAC). The built-in cracker.py
+        # declines keyver 3 itself — that's the engine's call, not the
+        # extractor's.
+        if hs.anonce and hs.mic and hs.eapol:
             ln = (f"WPA*02*{hs.mic.hex()}*{apx}*{stax}*{esx}*"
                   f"{hs.anonce.hex()}*{hs.eapol.hex()}*00")
             lines.append(ln)
