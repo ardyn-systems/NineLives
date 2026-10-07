@@ -48,6 +48,25 @@ def _run_desktop():
 
     logging.getLogger("pywebview").addFilter(_DropNativeIntrospection())
 
+    # WebView2 creates its user-data folder in the process working directory by
+    # default. On a double-click that cwd is System32, and when installed the
+    # exe dir is C:\Program Files\NineLives — both read-only — so WebView2 can't
+    # create the folder and webview.start() hangs. Pin it to our writable
+    # per-user data dir. (Reproduced: launching from a read-only cwd hangs
+    # exactly at webview.start until this is set.)
+    wv2 = os.path.join(hc.DATA_DIR, "webview2")
+    os.makedirs(wv2, exist_ok=True)
+    os.environ["WEBVIEW2_USER_DATA_FOLDER"] = wv2
+    # WebView2 writes into the process working directory, which is read-only on
+    # a double-click (System32) or installed launch (Program Files) — that hangs
+    # webview.start(). Move cwd to our writable data dir. (All app paths are
+    # absolute, so this is safe.)
+    try:
+        os.chdir(hc.DATA_DIR)
+    except OSError:
+        pass
+    log.log(f"desktop: cwd={os.getcwd()}; WEBVIEW2_USER_DATA_FOLDER={wv2}")
+
     log.log("desktop: constructing Api()")
     bridge = api.Api()
     index = os.path.join(hc.APP_DIR, "webui", "index.html")
@@ -60,7 +79,8 @@ def _run_desktop():
     log.log("desktop: window created; binding")
     bridge.bind(window)
     log.log("desktop: calling webview.start()")
-    webview.start(debug=bool(os.environ.get("NINELIVES_DEBUG")))
+    webview.start(storage_path=wv2, private_mode=False,
+                  debug=bool(os.environ.get("NINELIVES_DEBUG")))
     log.log("desktop: webview.start() returned (window closed)")
 
 

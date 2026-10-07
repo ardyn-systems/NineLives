@@ -80,8 +80,9 @@ where it stopped:
 - **Windows:** `%LOCALAPPDATA%\NineLives\startup.log`
 - **Linux:** `~/.local/share/NineLives/startup.log`
 
-That same `NineLives` folder holds your settings, potfile, and extracted
-captures (it's kept out of the install directory so nothing needs admin rights).
+That same `NineLives` folder holds your settings, potfile, extracted captures,
+and the WebView2 browser data (it's kept out of the install directory so nothing
+needs admin rights).
 
 ## Authorized use
 
