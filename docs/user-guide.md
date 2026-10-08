@@ -71,10 +71,11 @@ to load a network straight into the Crack tab as mode `22000`.
 
 ## Themes
 
-![The theme menu](images/theme-menu.png)
+![The theme grid](images/settings.png)
 
-Six themes from the **Theme** menu — **Synthwave** (default) and **Cyberpunk**
-neon, plus Terrain, Midnight, Daylight, and Blueprint. Your choice is remembered.
+Six themes, chosen from the swatch grid in **Settings › General** (the cog) —
+**Synthwave** (default) and **Cyberpunk** neon, plus Terrain, Midnight, Daylight,
+and Blueprint. Your choice is remembered.
 
 ## Settings
 
@@ -85,8 +86,8 @@ left-hand menu of sections: **General**, **Wordlists**, **Updates**, and
 ![The Settings dialog](images/settings.png)
 
 - **General**
-  - **Theme** — pick any of the six themes from a swatch grid (the same themes as
-    the top-bar theme button; your choice is remembered).
+  - **Theme** — pick any of the six themes from the swatch grid; your choice is
+    remembered.
   - **Guide** — reopen the welcome walkthrough.
 - **Wordlists** — installed builds ship a small **starter set**. Use **Download**
   next to a list (rockyou, xato-10M, darkc0de) to fetch the bigger lists from the

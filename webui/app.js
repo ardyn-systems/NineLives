@@ -110,7 +110,6 @@ async function _bootBody() {
   S.attackModes = init.attack_modes;
   S.hashModes = init.hash_modes;
   document.documentElement.dataset.theme = init.current_theme;
-  buildThemeMenu(init.current_theme);
   buildThemeGrid(init.current_theme);
   buildHashTypes();
   buildAttackSeg();
@@ -146,28 +145,12 @@ function applyHostedMode() {
   const sec = el("seclists"); if (sec) sec.disabled = true;
 }
 
-/* ---------- theme (titlebar menu + Settings › General grid, kept in sync) ---------- */
+/* ---------- theme (Settings › General grid) ---------- */
 function applyTheme(id) {
   document.documentElement.dataset.theme = id;
   api().set_theme(id);
-  document.querySelectorAll("#theme-menu .item").forEach((x) =>
-    x.setAttribute("aria-checked", x.dataset.id === id));
   document.querySelectorAll("#settings-themes .chip-btn").forEach((x) =>
     x.setAttribute("aria-checked", x.dataset.id === id));
-}
-function buildThemeMenu(current) {
-  const m = el("theme-menu");
-  m.innerHTML = S.themes.map((t) => `
-    <button class="item" role="menuitemradio" data-id="${t.id}"
-      aria-checked="${t.id === current}">
-      <span class="swatch">${t.swatch.map((c) => `<i style="background:${c}"></i>`).join("")}</span>
-      <span class="meta">${esc(t.name)}<small>${esc(t.note)}</small></span>
-      <span class="check">✓</span>
-    </button>`).join("");
-  m.querySelectorAll(".item").forEach((b) => b.addEventListener("click", () => {
-    applyTheme(b.dataset.id);
-    m.classList.add("hidden");
-  }));
 }
 function buildThemeGrid(current) {
   const g = el("settings-themes");
@@ -491,11 +474,6 @@ window.hbWordlists = (count) => {
 
 /* ---------- events ---------- */
 function wireEvents() {
-  el("theme-btn").addEventListener("click", (e) => {
-    e.stopPropagation(); el("theme-menu").classList.toggle("hidden");
-  });
-  document.addEventListener("click", () => el("theme-menu").classList.add("hidden"));
-
   const VIEWS = ["crack", "captures"];
   document.querySelectorAll(".tab").forEach((t) => t.addEventListener("click", () => {
     const v = t.dataset.view;
