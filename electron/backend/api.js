@@ -15,6 +15,9 @@ const themes = require("./themes");
 const compat = require("./compat");
 const hashcat = require("./hashcat");
 const wordlistsMod = require("./wordlists");
+const wordlistDl = require("./wordlist_dl");
+const updater = require("./updater");
+const selfupdate = require("./selfupdate");
 const captures = require("./captures");
 
 const APP_VERSION = require("../package.json").version;
@@ -325,24 +328,82 @@ class Api extends EventEmitter {
     return { text: (r.stdout || "") };
   }
 
-  // ---- stubs filled in later phases --------------------------------------
+  // ---- downloadable wordlists -------------------------------------------
   list_wordlist_downloads() {
-    return { items: [] }; // Phase 2
+    return { items: wordlistDl.catalog() };
   }
-  check_update() {
-    return { current: hashcat.currentVersion(), latest: "", update_available: false };
+
+  install_wordlist(itemId) {
+    (async () => {
+      try {
+        this._emit("hbWordlistStatus", itemId, "starting…");
+        await wordlistDl.install(itemId, (m) => {
+          this._emit("hbOutput", `[wordlist] ${m}\n`);
+          this._emit("hbWordlistStatus", itemId, m);
+        });
+        this.catalog.scan();
+        this._emit("hbOutput", `[wordlist] done (${this.catalog.allEntries().length} wordlists indexed)\n`);
+        this._emit("hbWordlists", this.catalog.allEntries().length);
+        this._emit("hbWordlistStatus", itemId, "installed");
+      } catch (e) {
+        this._emit("hbOutput", `[wordlist] failed: ${e.message || e}\n`);
+        this._emit("hbWordlistStatus", itemId, `failed: ${e.message || e}`);
+      }
+    })();
+    return { started: true };
   }
-  install_update() {
-    return { error: "Not available yet." };
+
+  // ---- hashcat updates --------------------------------------------------
+  async check_update() {
+    try {
+      return await updater.check();
+    } catch (e) {
+      return { current: "", latest: "", update_available: false, error: String(e.message || e) };
+    }
   }
-  install_wordlist() {
-    return { error: "Not available yet." };
+
+  install_update(version) {
+    (async () => {
+      try {
+        const ver = await updater.install(version, (m) => this._emit("hbOutput", `[update] ${m}\n`));
+        this._emit("hbOutput", `[update] done: hashcat ${ver}\n`);
+        const modes = hashcat.refreshHashModes();
+        if (modes.length) {
+          this.modes = modes;
+          this.modeById = new Map(this.modes.map((m) => [m.id, m]));
+        }
+      } catch (e) {
+        this._emit("hbOutput", `[update] failed: ${e.message || e}\n`);
+      }
+    })();
+    return { started: true };
   }
-  check_self_update() {
-    return { available: false, current: APP_VERSION };
+
+  // ---- app self-update --------------------------------------------------
+  async check_self_update() {
+    return await selfupdate.check();
   }
+
   install_self_update() {
-    return { error: "Not available yet." };
+    (async () => {
+      const info = await selfupdate.check();
+      if (!info.available || !info.asset) {
+        this._emit("hbOutput", "[app-update] no update available for this platform.\n");
+        return;
+      }
+      try {
+        const res = await selfupdate.downloadAndLaunch(info.asset.url, info.asset.name,
+          (m) => this._emit("hbOutput", `[app-update] ${m}\n`));
+        this._emit("hbOutput", `[app-update] saved ${res.path}\n`);
+        if (res.quit) {
+          this._emit("hbOutput", "[app-update] launching installer; closing NineLives…\n");
+          this.emit("quit");
+        }
+      } catch (e) {
+        this._emit("hbOutput", `[app-update] failed: ${e.message || e}\n`);
+      }
+    })();
+    return { started: true, latest: APP_VERSION };
   }
 }
 

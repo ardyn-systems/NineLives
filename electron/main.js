@@ -108,6 +108,8 @@ app.whenReady().then(() => {
   api.on("event", (ev) => {
     if (win && !win.isDestroyed()) win.webContents.send("nl-event", ev);
   });
+  // backend asked to quit (e.g. to let the self-update installer replace files)
+  api.on("quit", () => setTimeout(() => app.quit(), 1000));
 
   createWindow();
   app.on("activate", () => {
