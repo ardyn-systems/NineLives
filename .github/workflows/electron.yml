@@ -7,6 +7,11 @@ name: electron
 
 on:
   workflow_dispatch:
+    inputs:
+      bundle_vendor:
+        description: "Bundle real hashcat + wordlists (produces an installable build)"
+        type: boolean
+        default: false
   pull_request:
     paths:
       - "electron/**"
@@ -42,7 +47,18 @@ jobs:
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y xvfb libnss3 libatk-bridge2.0-0 libgtk-3-0 libgbm1 libasound2t64 || sudo apt-get install -y xvfb libnss3 libatk-bridge2.0-0 libgtk-3-0 libgbm1 libasound2
 
-      - name: Stub vendor (real hashcat/wordlists bundled at cutover)
+      - name: Bundle real vendor (hashcat + wordlists)
+        if: ${{ inputs.bundle_vendor }}
+        shell: bash
+        working-directory: ${{ github.workspace }}
+        run: |
+          if [ "$RUNNER_OS" = "Linux" ]; then sudo apt-get install -y p7zip-full; fi
+          python fetch_hashcat.py
+          python fetch_wordlists.py
+          echo "vendor bundled:"; du -sh vendor/* 2>/dev/null || true
+
+      - name: Stub vendor (packaging-only runs)
+        if: ${{ !inputs.bundle_vendor }}
         shell: bash
         run: mkdir -p ../vendor && echo stub > ../vendor/.placeholder
 
