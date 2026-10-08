@@ -1,8 +1,8 @@
 {
   "name": "ninelives",
   "productName": "NineLives",
-  "version": "0.3.0",
-  "description": "Push-button hashcat console (Electron migration, in progress)",
+  "version": "1.0.0",
+  "description": "Push-button hashcat console (Electron)",
   "author": "Ardyn Systems",
   "license": "MIT",
   "main": "main.js",
@@ -39,6 +39,10 @@
       {
         "from": "../vendor",
         "to": "vendor"
+      },
+      {
+        "from": "../examples",
+        "to": "examples"
       }
     ],
     "win": {

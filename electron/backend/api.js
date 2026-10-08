@@ -9,7 +9,7 @@ const path = require("path");
 const { EventEmitter } = require("events");
 const { spawn, execFile } = require("child_process");
 
-const { DATA_DIR } = require("./paths");
+const { DATA_DIR, EXAMPLES_DIR } = require("./paths");
 const settings = require("./settings");
 const themes = require("./themes");
 const compat = require("./compat");
@@ -44,6 +44,29 @@ class Api extends EventEmitter {
     this._refreshed = false;
     fs.mkdirSync(CAPT_DIR, { recursive: true });
     fs.mkdirSync(HASH_DIR, { recursive: true });
+    this._seedExamples();
+  }
+
+  // On first run, preload the bundled sample capture so a fresh install can
+  // crack straight away (with the bundled wpa-demo wordlist) — Coherer → Induction.
+  _seedExamples() {
+    try {
+      if (settings.get("examples_seeded")) return;
+      const sample = path.join(EXAMPLES_DIR, "Coherer-sample.hc22000");
+      if (!fs.existsSync(sample)) return;
+      const index = settings.get("captures_index", []) || [];
+      if (!index.some((e) => e.id === "Coherer-sample.hc22000")) {
+        index.push({
+          id: "Coherer-sample.hc22000", source: "bundled example (wpa-Induction)",
+          essid: "Coherer", bssid: "00:0c:41:82:b2:55", pmkid: true, handshake: true,
+          path: sample, imported: "sample", sample: true,
+        });
+        settings.set("captures_index", index);
+      }
+      settings.set("examples_seeded", true);
+    } catch {
+      /* ignore */
+    }
   }
 
   // Background: run the slow hashcat probes (--help, --version) off the UI path

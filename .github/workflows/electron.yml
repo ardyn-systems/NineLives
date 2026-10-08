@@ -1,17 +1,27 @@
-# Electron build (migration-in-progress). Builds the Electron app into real
-# installers (NSIS / AppImage) and smoke-tests the PACKAGED app, so the asar +
-# extraResources layout is proven. Not wired into releases — the Python build in
-# build.yml is still the shipping app. hashcat/wordlists are stubbed here; full
-# vendor bundling + release wiring land at cutover (Phase 4).
+# NineLives Electron build + release. On a v* tag this bundles the real hashcat,
+# wordlists, and examples, builds the NSIS installer (Windows) + AppImage (Linux),
+# smoke-tests the packaged app, and attaches the artifacts to the GitHub release.
+# PRs / manual dispatch build without bundling vendor (packaging check only).
 name: electron
 
 on:
   workflow_dispatch:
+    inputs:
+      bundle_vendor:
+        description: "Bundle real hashcat + wordlists (installable build)"
+        type: boolean
+        default: false
+  push:
+    tags: ["v*"]
   pull_request:
     paths:
       - "electron/**"
       - "webui/**"
+      - "examples/**"
       - ".github/workflows/electron.yml"
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -42,7 +52,18 @@ jobs:
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y xvfb libnss3 libatk-bridge2.0-0 libgtk-3-0 libgbm1 libasound2t64 || sudo apt-get install -y xvfb libnss3 libatk-bridge2.0-0 libgtk-3-0 libgbm1 libasound2
 
-      - name: Stub vendor (real hashcat/wordlists bundled at cutover)
+      # Real hashcat + wordlists on tags (release) or when explicitly requested.
+      - name: Bundle real vendor (hashcat + wordlists)
+        if: ${{ startsWith(github.ref, 'refs/tags/') || inputs.bundle_vendor }}
+        shell: bash
+        working-directory: ${{ github.workspace }}
+        run: |
+          if [ "$RUNNER_OS" = "Linux" ]; then sudo apt-get install -y p7zip-full; fi
+          python fetch_hashcat.py
+          python fetch_wordlists.py
+
+      - name: Stub vendor (packaging-only runs)
+        if: ${{ !startsWith(github.ref, 'refs/tags/') && !inputs.bundle_vendor }}
         shell: bash
         run: mkdir -p ../vendor && echo stub > ../vendor/.placeholder
 
@@ -61,12 +82,32 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           set +e
-          # --no-sandbox: CI's unpacked chrome-sandbox isn't root:4755 (the real
-          # AppImage sets this up); the sandbox isn't what we're testing here.
           NINELIVES_SMOKE=1 xvfb-run -a dist/linux-unpacked/ninelives --smoke --no-sandbox
           code=$?
           echo "smoke exit=$code"
           exit $code
+
+      - name: Checksums (Windows)
+        if: startsWith(github.ref, 'refs/tags/') && runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Get-ChildItem dist\NineLives-Setup-*.exe |
+            ForEach-Object { "$((Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower())  $($_.Name)" } |
+            Out-File -Encoding ascii dist\SHA256SUMS-windows.txt
+
+      - name: Checksums (Linux)
+        if: startsWith(github.ref, 'refs/tags/') && runner.os == 'Linux'
+        run: |
+          cd dist && sha256sum NineLives-*-x86_64.AppImage > SHA256SUMS-linux.txt
+
+      - name: Attach to release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            electron/dist/NineLives-Setup-*.exe
+            electron/dist/NineLives-*-x86_64.AppImage
+            electron/dist/SHA256SUMS-*.txt
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
