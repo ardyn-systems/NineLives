@@ -338,13 +338,32 @@ function wireEvents() {
   });
   document.addEventListener("click", () => el("theme-menu").classList.add("hidden"));
 
-  const VIEWS = ["crack", "captures", "settings"];
+  const VIEWS = ["crack", "captures"];
   document.querySelectorAll(".tab").forEach((t) => t.addEventListener("click", () => {
     const v = t.dataset.view;
     document.querySelectorAll(".tab").forEach((x) => x.classList.toggle("active", x === t));
     VIEWS.forEach((name) => el("view-" + name).classList.toggle("hidden", name !== v));
     if (v === "captures") renderCaptures();
   }));
+
+  // --- Settings dialog (cog) ---
+  const sOverlay = el("settings-overlay");
+  const openSettings = () => { sOverlay.classList.remove("hidden"); renderWordlistDownloads(); };
+  const closeSettings = () => sOverlay.classList.add("hidden");
+  el("settings-btn").addEventListener("click", openSettings);
+  el("settings-close").addEventListener("click", closeSettings);
+  sOverlay.addEventListener("click", (e) => { if (e.target === sOverlay) closeSettings(); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeSettings(); });
+
+  // --- Window controls (frameless Electron window) ---
+  if (window.nlwin) {
+    el("win-min").addEventListener("click", () => window.nlwin.control("min"));
+    el("win-max").addEventListener("click", () => window.nlwin.control("max"));
+    el("win-close").addEventListener("click", () => window.nlwin.control("close"));
+    window.nlwin.onState((max) => document.body.classList.toggle("maximized", !!max));
+  } else {
+    const wc = el("window-controls"); if (wc) wc.style.display = "none";
+  }
 
   // --- captures import ---
   el("pick-capture").addEventListener("click", async (e) => {
@@ -411,7 +430,6 @@ function wireEvents() {
                           "Install"))) return;
     await api().install_update(info.latest);
   };
-  el("update-btn").addEventListener("click", doUpdate);
   el("update-btn2").addEventListener("click", doUpdate);
 
   const appBtn = el("app-update-btn");

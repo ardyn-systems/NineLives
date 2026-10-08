@@ -18,3 +18,9 @@ contextBridge.exposeInMainWorld("nlapi", {
     });
   },
 });
+
+// Window controls for the frameless window (absent in a plain browser).
+contextBridge.exposeInMainWorld("nlwin", {
+  control: (action) => ipcRenderer.send("win-control", action),
+  onState: (cb) => ipcRenderer.on("win-state", (_e, maximized) => cb(maximized)),
+});

@@ -40,7 +40,7 @@ def _prep() -> None:
     import settings
     import api
     settings.set("acknowledged", True)
-    settings.set("ui_theme", "synthwave")
+    settings.set("ui_theme", "terrain")
     settings.set("captures_index", [])
     fixture = ROOT / "tests" / "fixtures" / "wpa-Induction.pcap"
     api.Api().import_capture(str(fixture))
@@ -84,9 +84,10 @@ def main() -> int:
             page.wait_for_timeout(400)
             shot("captures")
 
-            page.click('.tab[data-view="settings"]')
+            page.click("#settings-btn")   # Settings is a cog-opened dialog now
             page.wait_for_timeout(300)
             shot("settings")
+            page.click("#settings-close")
 
             page.click('.tab[data-view="crack"]')
             page.wait_for_timeout(200)

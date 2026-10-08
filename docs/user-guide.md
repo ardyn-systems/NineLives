@@ -25,7 +25,7 @@ Grab the latest build from the [Releases page](https://github.com/ardyn-systems/
   `webkit2gtk` present) or the `-linux-x86_64.tar.gz`.
 
 Each build **bundles hashcat and a small wordlist starter set**, so it cracks out
-of the box; grab bigger lists (rockyou etc.) from the Settings tab when you want
+of the box; grab bigger lists (rockyou etc.) from Settings (the cog) when you want
 them. Verify downloads against `SHA256SUMS-<os>.txt`.
 
 ## The Crack tab
@@ -68,7 +68,9 @@ neon, plus Terrain, Midnight, Daylight, and Blueprint. Your choice is remembered
 
 ## Settings
 
-![The Settings tab](images/settings.png)
+Open Settings from the **cog (⚙)** in the top bar — it opens as a dialog.
+
+![The Settings dialog](images/settings.png)
 
 - **Wordlists** — installed builds ship a small **starter set**. Use **Download**
   next to a list (rockyou, xato-10M, darkc0de) to fetch the bigger lists from the

@@ -27,7 +27,8 @@ function createWindow() {
     height: 860,
     minWidth: 900,
     minHeight: 640,
-    backgroundColor: "#0a0a14",
+    backgroundColor: "#15140f",   // terrain bg — avoids a white flash before CSS
+    frame: false,                 // custom in-app title bar + window controls
     autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
@@ -37,6 +38,10 @@ function createWindow() {
   });
   win.loadFile(WEBUI_INDEX);
   if (process.env.NINELIVES_DEBUG) win.webContents.openDevTools({ mode: "detach" });
+
+  const sendState = () => { if (win && !win.isDestroyed()) win.webContents.send("win-state", win.isMaximized()); };
+  win.on("maximize", sendState);
+  win.on("unmaximize", sendState);
 
   // Automated smoke check: once the page has loaded, confirm it booted and
   // reached the backend, print the result, and quit. Used by `npm run smoke`.
@@ -113,6 +118,14 @@ app.whenReady().then(() => {
   });
   // backend asked to quit (e.g. to let the self-update installer replace files)
   api.on("quit", () => setTimeout(() => app.quit(), 1000));
+
+  // Custom window controls (frameless window).
+  ipcMain.on("win-control", (_e, action) => {
+    if (!win || win.isDestroyed()) return;
+    if (action === "min") win.minimize();
+    else if (action === "max") win.isMaximized() ? win.unmaximize() : win.maximize();
+    else if (action === "close") win.close();
+  });
 
   createWindow();
   app.on("activate", () => {
