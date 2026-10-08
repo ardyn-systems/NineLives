@@ -6,10 +6,13 @@
 
 const fs = require("fs");
 const path = require("path");
+const { spawnSync } = require("child_process");
 const { APP_DIR, DATA_DIR } = require("./paths");
 
 const VENDOR_DIR = path.join(APP_DIR, "vendor", "hashcat"); // bundled (read-only)
 const UPDATE_DIR = path.join(DATA_DIR, "vendor", "hashcat"); // self-update target
+const CATALOG_CACHE = path.join(DATA_DIR, "hash_modes.cache.json");
+const WORKDIR = path.join(DATA_DIR, "hcwork");
 
 function findHashcat() {
   const names = ["hashcat.exe", "hashcat.bin", "hashcat"];
@@ -82,8 +85,132 @@ const STATIC_HASH_MODES = [
   { id: 22921, name: "RSA/DSA/EC/OpenSSH Private Keys", category: "Private Key" },
 ];
 
+// Instant: cached modes if present, else the static fallback. No subprocess.
 function loadHashModes() {
+  try {
+    const cached = JSON.parse(fs.readFileSync(CATALOG_CACHE, "utf8"));
+    if (Array.isArray(cached) && cached.length) return cached;
+  } catch {
+    /* ignore */
+  }
   return STATIC_HASH_MODES.slice();
 }
 
-module.exports = { findHashcat, currentVersion, loadHashModes, VENDOR_DIR, UPDATE_DIR, STATIC_HASH_MODES };
+// --- Run directory (OpenCL/modules/... linked from the read-only hashcat dir) --
+// Port of hashcat_iface.hashcat_workdir(): hashcat resolves its shared folders
+// relative to cwd and writes runtime files there, so we run from a writable dir
+// with the shared folders linked in (Windows junctions / POSIX symlinks).
+const WORK_SKIP = new Set(["hashcat.exe", "hashcat.bin", "kernels", "hashcat.pid",
+  "hashcat.induct", "hashcat.log", "hashcat.restore", "hashcat.dictstat2", "hashcat.potfile"]);
+
+function rmLink(dst) {
+  try {
+    const st = fs.lstatSync(dst);
+    if (st.isSymbolicLink()) fs.unlinkSync(dst);
+    else if (st.isDirectory()) fs.rmdirSync(dst);
+    else fs.unlinkSync(dst);
+  } catch {
+    /* ignore (missing) */
+  }
+}
+function linkDir(src, dst) {
+  rmLink(dst);
+  try {
+    fs.symlinkSync(src, dst, process.platform === "win32" ? "junction" : "dir");
+  } catch {
+    /* ignore */
+  }
+}
+function hashcatWorkdir() {
+  try {
+    fs.mkdirSync(WORKDIR, { recursive: true });
+  } catch {
+    return DATA_DIR;
+  }
+  const p = findHashcat();
+  const hcDir = p ? path.dirname(p) : "";
+  if (!hcDir || !safeIsDir(hcDir)) return WORKDIR;
+  const marker = path.join(WORKDIR, ".hcsrc");
+  let prev = "";
+  try {
+    prev = fs.readFileSync(marker, "utf8").trim();
+  } catch {
+    /* ignore */
+  }
+  if (prev === hcDir) return WORKDIR; // already prepared for this hashcat
+  for (const name of fs.readdirSync(hcDir)) {
+    if (WORK_SKIP.has(name)) continue;
+    const src = path.join(hcDir, name);
+    const dst = path.join(WORKDIR, name);
+    try {
+      const st = fs.statSync(src);
+      if (st.isDirectory()) linkDir(src, dst);
+      else if (st.isFile()) fs.copyFileSync(src, dst);
+    } catch {
+      /* ignore */
+    }
+  }
+  try {
+    fs.writeFileSync(marker, hcDir, "utf8");
+  } catch {
+    /* ignore */
+  }
+  return WORKDIR;
+}
+
+function safeIsDir(p) {
+  try {
+    return fs.statSync(p).isDirectory();
+  } catch {
+    return false;
+  }
+}
+
+// --- live version + --help catalog (subprocess; call off the UI path) ---------
+function version(p) {
+  p = p || findHashcat();
+  if (!p) return "";
+  const r = spawnSync(p, ["--version"], { cwd: hashcatWorkdir(), encoding: "utf8", timeout: 20000 });
+  return (r.stdout || "").trim();
+}
+
+const MODE_ROW = /^\s*(\d+)\s*\|\s*(.+?)\s*\|\s*(.+?)\s*$/;
+function parseHashModesText(stdout) {
+  if (!stdout) return [];
+  const modes = [];
+  let inSection = false;
+  for (const line of stdout.split(/\r?\n/)) {
+    if (line.includes("[ Hash modes ]")) {
+      inSection = true;
+      continue;
+    }
+    if (inSection) {
+      if (line.trim().startsWith("- [") && !line.includes("Hash modes")) break;
+      const m = MODE_ROW.exec(line);
+      if (m && m[2].toLowerCase() !== "name") {
+        modes.push({ id: parseInt(m[1], 10), name: m[2].trim(), category: m[3].trim() });
+      }
+    }
+  }
+  return modes;
+}
+function parseHashModes(p) {
+  p = p || findHashcat();
+  if (!p) return [];
+  const r = spawnSync(p, ["--help"], { cwd: hashcatWorkdir(), encoding: "utf8", timeout: 40000 });
+  return parseHashModesText(r.stdout || "");
+}
+function cacheHashModes(modes) {
+  if (modes && modes.length) {
+    try {
+      fs.writeFileSync(CATALOG_CACHE, JSON.stringify(modes));
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
+module.exports = {
+  findHashcat, currentVersion, loadHashModes, version, parseHashModes, parseHashModesText,
+  cacheHashModes, hashcatWorkdir, VENDOR_DIR, UPDATE_DIR, WORKDIR, CATALOG_CACHE, STATIC_HASH_MODES,
+};

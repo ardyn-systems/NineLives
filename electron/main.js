@@ -48,10 +48,43 @@ function createWindow() {
         );
         const r = JSON.parse(out);
         console.log("SMOKE " + out);
-        const ok = r.booted && r.themes >= 4 && r.attacks >= 1 && r.modes >= 1;
-        process.exitCode = ok ? 0 : 1;
+        process.exitCode = r.booted && r.themes >= 4 && r.attacks >= 1 && r.modes >= 1 ? 0 : 1;
       } catch (e) {
         console.log("SMOKE error " + (e && e.message));
+        process.exitCode = 1;
+      }
+      app.quit();
+    });
+  }
+
+  // Crack smoke (NINELIVES_SMOKE_CRACK=<wordlist path>): import the Coherer
+  // fixture, run a crack from the renderer, and confirm hbOutput streams over
+  // IPC into the console and hbDone fires.
+  if (process.env.NINELIVES_SMOKE_CRACK) {
+    const wl = process.env.NINELIVES_SMOKE_CRACK.replace(/\\/g, "\\\\");
+    const capB64 = require("fs").readFileSync(path.join(__dirname, "..", "tests", "fixtures", "wpa-Induction.pcap")).toString("base64");
+    win.webContents.on("did-finish-load", async () => {
+      await new Promise((r) => setTimeout(r, 1500));
+      try {
+        await win.webContents.executeJavaScript(
+          `(async()=>{ await api().import_capture_bytes("wpa-Induction.pcap","data:;base64,${capB64}");` +
+          ` const uc=await api().use_capture("Coherer_000c4182b255.hc22000");` +
+          ` document.getElementById('console').innerHTML="";` +
+          ` await api().run({mode_id:uc.mode_id,hashfile:uc.hashfile,attack_id:0,wordlist:"${wl}",options:[]}); })()`
+        );
+        // poll the console for the finished marker
+        const t0 = Date.now();
+        let txt = "";
+        while (Date.now() - t0 < 90000) {
+          await new Promise((r) => setTimeout(r, 1000));
+          txt = await win.webContents.executeJavaScript("document.getElementById('console').innerText");
+          if (/=== finished ===/.test(txt)) break;
+        }
+        const ok = /Recovered[^\n]*1\//.test(txt) && /=== finished ===/.test(txt);
+        console.log("SMOKE_CRACK chars=" + txt.length + " recovered=" + /Recovered[^\n]*1\//.test(txt) + " finished=" + /=== finished ===/.test(txt));
+        process.exitCode = ok ? 0 : 1;
+      } catch (e) {
+        console.log("SMOKE_CRACK error " + (e && e.message));
         process.exitCode = 1;
       }
       app.quit();

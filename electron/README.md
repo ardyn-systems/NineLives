@@ -47,8 +47,11 @@ NINELIVES_SMOKE=1 npm run smoke   # boot the window headless-ish, print state, e
   compat, wordlists catalog, static hash catalog) + the **Captures tab working**
   (pcap import via the ported extractor) + the window boots the UI over IPC.
   The pcap extractor is validated byte-for-byte against `captures.py`.
-- **Phase 1:** hashcat run + live output streaming (spawn + `nl-event`), the
-  live `--help` catalog, and `hashcat_workdir` (OpenCL junctions).
+- **Phase 1 ✅:** hashcat run + **live output streaming** (spawn → `hbOutput`/
+  `hbDone` over IPC), the live `--help` catalog (background refresh → `hbCatalog`),
+  and `hashcatWorkdir` (OpenCL junctions via `fs.symlinkSync('junction')`).
+  Proven in the Electron window: a crack streams its output and recovers the
+  Coherer passphrase (`Induction`).
 - **Phase 2:** wordlist downloads, hashcat updater, self-update.
 - **Phase 3:** packaging with electron-builder (NSIS + AppImage), bundling
   hashcat/wordlists; CI Node build + smoke-test.
