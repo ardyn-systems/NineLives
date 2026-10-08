@@ -29,6 +29,7 @@ function createWindow() {
     minHeight: 640,
     backgroundColor: "#15140f",   // terrain bg — avoids a white flash before CSS
     frame: false,                 // custom in-app title bar + window controls
+    icon: path.join(RES_DIR, "webui", "logo.png"), // runtime taskbar icon (Linux/dev)
     autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),

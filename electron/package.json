@@ -49,17 +49,22 @@
       "target": [
         "nsis"
       ],
+      "icon": "buildres/icon.ico",
       "artifactName": "NineLives-Setup-${version}.${ext}"
     },
     "nsis": {
       "oneClick": false,
       "perMachine": false,
-      "allowToChangeInstallationDirectory": true
+      "allowToChangeInstallationDirectory": true,
+      "installerIcon": "buildres/icon.ico",
+      "uninstallerIcon": "buildres/icon.ico",
+      "installerHeaderIcon": "buildres/icon.ico"
     },
     "linux": {
       "target": [
         "AppImage"
       ],
+      "icon": "buildres/icon.png",
       "category": "Utility",
       "artifactName": "NineLives-${version}-x86_64.${ext}"
     }
