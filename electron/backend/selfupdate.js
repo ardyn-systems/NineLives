@@ -58,19 +58,27 @@ async function check() {
   return { current: cur, latest: rel.version, available, notes: rel.notes, url: rel.url, asset: available ? platformAsset(rel.assets) : null };
 }
 
-async function downloadAndLaunch(assetUrl, name, progress) {
+// Download the update asset to a temp file, but DON'T install it yet. Returns
+// the local path once complete (apply() runs it later, on "Restart NineLives").
+async function download(assetUrl, name, progress) {
   const dest = path.join(os.tmpdir(), name);
   await downloadToFile(assetUrl, dest, (p) => progress && progress(`downloading… ${p}%`));
-  if (process.platform === "win32" && name.toLowerCase().endsWith(".exe")) {
-    spawn(dest, [], { detached: true, stdio: "ignore" }).unref();
-    return { path: dest, quit: true };
+  if (process.platform !== "win32") {
+    try { fs.chmodSync(dest, 0o755); } catch { /* ignore */ }
   }
-  try {
-    fs.chmodSync(dest, 0o755);
-  } catch {
-    /* ignore */
-  }
-  return { path: dest, quit: false };
+  return dest;
 }
 
-module.exports = { check, downloadAndLaunch, APP_VERSION };
+// Apply a previously-downloaded update with no user input, then the caller quits
+// so the installer can replace files and relaunch.
+//  - Windows: run the NSIS installer silently (/S) — no wizard; it closes the
+//    running app, installs, and relaunches NineLives.
+//  - Linux: launch the downloaded AppImage (the new version) detached.
+function applyInstaller(dest) {
+  const args = process.platform === "win32" && dest.toLowerCase().endsWith(".exe")
+    ? ["/S"] : [];
+  spawn(dest, args, { detached: true, stdio: "ignore" }).unref();
+  return true;
+}
+
+module.exports = { check, download, applyInstaller, APP_VERSION };

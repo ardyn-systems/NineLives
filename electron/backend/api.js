@@ -413,26 +413,35 @@ class Api extends EventEmitter {
     return await selfupdate.check();
   }
 
-  install_self_update() {
-    (async () => {
-      const info = await selfupdate.check();
-      if (!info.available || !info.asset) {
-        this._emit("hbOutput", "[app-update] no update available for this platform.\n");
-        return;
-      }
-      try {
-        const res = await selfupdate.downloadAndLaunch(info.asset.url, info.asset.name,
-          (m) => this._emit("hbOutput", `[app-update] ${m}\n`));
-        this._emit("hbOutput", `[app-update] saved ${res.path}\n`);
-        if (res.quit) {
-          this._emit("hbOutput", "[app-update] launching installer; closing NineLives…\n");
-          this.emit("quit");
-        }
-      } catch (e) {
-        this._emit("hbOutput", `[app-update] failed: ${e.message || e}\n`);
-      }
-    })();
-    return { started: true, latest: APP_VERSION };
+  // Download the update in the background (no install yet). Resolves when the
+  // installer is staged; the UI then shows "Restart NineLives".
+  async download_self_update() {
+    const info = await selfupdate.check();
+    if (!info.available || !info.asset) return { ready: false, available: false };
+    try {
+      const dest = await selfupdate.download(info.asset.url, info.asset.name,
+        (m) => this._emit("hbOutput", `[app-update] ${m}\n`));
+      this._pendingUpdate = { path: dest, version: info.latest, name: info.asset.name };
+      this._emit("hbOutput", `[app-update] downloaded ${info.asset.name} — ready to install.\n`);
+      return { ready: true, version: info.latest };
+    } catch (e) {
+      this._emit("hbOutput", `[app-update] download failed: ${e.message || e}\n`);
+      return { ready: false, error: e.message || String(e) };
+    }
+  }
+
+  // Apply the staged update with no further input: launch the installer silently
+  // and quit so it can replace files and relaunch NineLives.
+  apply_self_update() {
+    if (!this._pendingUpdate) return { ok: false, error: "No update downloaded yet." };
+    try {
+      selfupdate.applyInstaller(this._pendingUpdate.path);
+      this._emit("hbOutput", "[app-update] installing silently; NineLives will restart…\n");
+      setTimeout(() => this.emit("quit"), 400);
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: e.message || String(e) };
+    }
   }
 }
 

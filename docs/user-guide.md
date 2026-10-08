@@ -80,33 +80,35 @@ and Blueprint. Your choice is remembered.
 ## Settings
 
 Open Settings from the **cog (⚙)** in the top bar — it opens as a dialog with a
-left-hand menu of sections: **General**, **Wordlists**, **Updates**, and
-**About**.
+left-hand menu of sections: **General**, **Wordlists**, **Integrations**,
+**Updates**, **Help**, and **About**.
 
 ![The Settings dialog](images/settings.png)
 
-- **General**
-  - **Theme** — pick any of the six themes from the swatch grid; your choice is
-    remembered.
-  - **Guide** — reopen the welcome walkthrough.
+- **General** — **Theme**: pick any of the six themes from the swatch grid; your
+  choice is remembered.
 - **Wordlists** — installed builds ship a small **starter set**. Use **Download**
   next to a list (rockyou, xato-10M, darkc0de) to fetch the bigger lists from the
   SecLists project; they land in your data dir and appear in the dropdowns
   automatically. Or point the folder box at your own SecLists checkout — all
   sources feed the dropdowns. (Downloads run in the desktop app, not the hosted
   demo.)
+- **Integrations** — a placeholder for future companion-app features (pushing
+  hashes/captures straight into NineLives).
 - **Updates**
-  - **NineLives app** — shows your version and checks the project's GitHub
-    releases. Click **Check for updates**; if a newer version exists, an **Update
-    now to vX.Y.Z** button appears — clicking it **downloads and installs right
-    away** (no extra confirmation) and closes the app to run the installer and
-    reopen. **Check when NineLives opens** (on by default) quietly checks GitHub
-    at most once a day; when an update is waiting, a dot appears on the cog and a
-    **New** badge on the Updates tab. (In the hosted demo it links to the Releases
-    page instead.)
+  - **NineLives app** — with **Update automatically** on (the default), NineLives
+    quietly checks GitHub on startup and **downloads a new release in the
+    background**, then shows a single **Restart NineLives** button. Clicking it
+    installs silently and reopens on the new version — no prompts. You can also
+    press **Check for updates** any time. Turn the toggle off to only check when
+    you press the button. An available update also lights a dot on the cog and a
+    **New** badge on the Updates tab. (In the hosted demo it links to Releases.)
   - **hashcat engine** — check for and install hashcat updates.
-- **About** — what NineLives is, the app + hashcat versions, and quick links to
-  the in-app guide, the Releases page, and the project repo.
+- **Help** — **Take the tour** (reopens the welcome guide), **User guide**,
+  **Report a problem** (opens a GitHub issue), and **Demo** (jumps to the bundled
+  Coherer capture).
+- **About** — what NineLives is, the app + hashcat versions, the source link, and
+  the open-source components it's built with.
 
 ## Hosted mode
 
