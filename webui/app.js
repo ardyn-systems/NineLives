@@ -168,42 +168,48 @@ function buildThemeGrid(current) {
 
 /* ---------- spotlight tour (NetSeer-style: cut-out box + floating card) ---------- */
 const TOUR_STEPS = [
-  { title: "Welcome to NineLives",
+  { view: "crack", title: "Welcome to NineLives",
     text: "NineLives drives hashcat to recover passwords from hashes and Wi-Fi "
-      + "captures — no command line. This quick tour points out each piece. Use "
-      + "the buttons, or the arrow keys." },
-  { target: "#hashfile", title: "Pick what to crack",
+      + "captures — no command line. This quick tour walks you through each part "
+      + "of the app. Use the buttons, or the arrow keys." },
+  { view: "crack", target: "#hashfile", title: "Pick what to crack",
     text: "Choose a hash file here, or import a Wi-Fi capture on the Captures tab "
       + "and click Use in Crack to load it for you." },
-  { target: ".ht-pick", title: "Set the hash type",
+  { view: "crack", target: ".ht-pick", title: "Set the hash type",
     text: "Pick a category (start with ★ Common) and the exact mode — or just "
       + "search by name or number, like WPA, NTLM, or 1000." },
-  { target: "#attack-seg", title: "Choose an attack",
+  { view: "crack", target: "#attack-seg", title: "Choose an attack",
     text: "How candidates are generated. Straight (dictionary) is the usual "
       + "starting point; the panels below adapt to your choice." },
-  { target: "#inputs-card", title: "Pick your inputs",
+  { view: "crack", target: "#inputs-card", title: "Pick your inputs",
     text: "Choose a wordlist (or type a mask). Starter lists ship built in; grab "
       + "bigger ones from Settings › Wordlists." },
-  { target: "#options", title: "Tune the options",
+  { view: "crack", target: "#options", title: "Tune the options",
     text: "Only the options that work with your attack appear, as plain-language "
       + "toggles and dropdowns — grouped and collapsible, so there's almost "
       + "nothing to type." },
-  { target: "#run-btn", title: "Run it",
+  { view: "crack", target: "#run-btn", title: "Run it",
     text: "Press Run crack. A plain-language status bar shows progress, speed, and "
       + "recovered passwords. Show console reveals the raw hashcat output." },
-  { target: '.tab[data-view="captures"]', title: "Wi-Fi captures",
-    text: "Drop a .pcap/.cap here to pull out WPA/WPA2 handshakes, then send one "
-      + "straight to the Crack tab." },
-  { target: "#settings-btn", title: "Settings & updates",
-    text: "Themes, wordlists, automatic updates, help, and About live behind the "
-      + "cog. You can replay this tour any time from Help › Take the tour." },
+  { view: "captures", target: "#dropzone", title: "Wi-Fi captures",
+    text: "This is the Captures tab. Drop a .pcap/.cap here to pull out WPA/WPA2 "
+      + "handshakes, then click Use in Crack to send one straight to the Crack tab." },
+  { view: "crack", target: "#settings-btn", title: "Settings & updates",
+    text: "Themes, your graphics card, wordlists, app updates, help, and About all "
+      + "live behind the cog. You can replay this tour any time from Help › Take "
+      + "the tour." },
 ];
 const tour = { active: false, i: 0 };
 
+// Switch to the tab a step lives on so its target is actually on screen.
+function tourShowView(view) {
+  if (!view) return;
+  const tab = document.querySelector(`.tab[data-view="${view}"]`);
+  if (tab && !tab.classList.contains("active")) tab.click();
+}
+
 function startTour() {
   el("settings-overlay").classList.add("hidden");       // in case it's open
-  const crackTab = document.querySelector('.tab[data-view="crack"]');
-  if (crackTab) crackTab.click();                        // targets live on the Crack tab
   try { localStorage.setItem("nl_tour_seen", "1"); } catch (_) {}
   tour.active = true;
   el("tour").classList.remove("hidden");
@@ -212,11 +218,13 @@ function startTour() {
 function endTour() {
   tour.active = false;
   el("tour").classList.add("hidden");
+  tourShowView("crack");                                  // land back on the main tab
   el("settings-btn").focus({ preventScroll: true });
 }
 function showTourStep(i) {
   tour.i = Math.max(0, Math.min(TOUR_STEPS.length - 1, i));
   const step = TOUR_STEPS[tour.i];
+  tourShowView(step.view);                                // navigate to this step's section
   if (step.before) step.before();
   el("tour-step").textContent = `${tour.i + 1} of ${TOUR_STEPS.length}`;
   el("tour-title").textContent = step.title;
