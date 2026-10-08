@@ -9,6 +9,7 @@ const path = require("path");
 const fs = require("fs");
 
 const APP_DIR = process.env.NINELIVES_APP_DIR || path.resolve(__dirname, "..", "..");
+const EXAMPLES_DIR = path.join(APP_DIR, "examples"); // bundled sample capture + wordlist
 
 function dataDir() {
   let root;
@@ -26,4 +27,4 @@ function dataDir() {
 
 const DATA_DIR = dataDir();
 
-module.exports = { APP_DIR, DATA_DIR };
+module.exports = { APP_DIR, DATA_DIR, EXAMPLES_DIR };

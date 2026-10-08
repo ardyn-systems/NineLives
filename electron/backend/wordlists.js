@@ -4,7 +4,7 @@
 
 const fs = require("fs");
 const path = require("path");
-const { APP_DIR, DATA_DIR } = require("./paths");
+const { APP_DIR, DATA_DIR, EXAMPLES_DIR } = require("./paths");
 const settings = require("./settings");
 
 const EXTS = new Set([".txt", ".lst", ".dic", ".wordlist"]);
@@ -39,7 +39,7 @@ class Catalog {
   }
   roots() {
     const out = [];
-    for (const r of [this.root, BUNDLED, DOWNLOADED]) {
+    for (const r of [this.root, BUNDLED, DOWNLOADED, EXAMPLES_DIR]) {
       if (r && isDir(r) && !out.includes(r)) out.push(r);
     }
     return out;

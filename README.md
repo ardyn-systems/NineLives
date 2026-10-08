@@ -19,12 +19,14 @@ click Run.
 Any UI change updates the guide + screenshots in the same PR
 (`python docs/screenshots.py`).
 
-> **Migration in progress — Python → Electron.** NineLives is being rewritten
-> on Electron with a Node backend (see [`electron/`](electron/README.md)). The
-> **shipping release is still this Python build** (pywebview + a local server);
-> the Electron build is feature-complete and in testing and will take over at
-> cutover. This README and the user guide describe the current shipping app;
-> they'll be updated for Electron when it becomes the release.
+> **NineLives is an Electron app** (Chromium + a Node backend) as of v1.0.0 —
+> see [`electron/`](electron/README.md). Releases on the
+> [Releases page](https://github.com/ardyn-systems/NineLives/releases) are the
+> Electron installers (Windows NSIS `.exe`, Linux AppImage), and they ship a
+> **bundled example** (a sample WPA capture + a demo wordlist) so a fresh install
+> cracks out of the box. The original Python build (pywebview + a local server)
+> is kept in this repo for reference but is no longer shipped; the sections below
+> that reference `ninelives.py`/`api.py` describe that archived build.
 
 ## Design goals (and how they're met)
 

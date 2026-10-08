@@ -1,12 +1,13 @@
-# NineLives — Electron (migration in progress)
+# NineLives — Electron
 
-This directory is the **in-progress Electron rewrite** of NineLives. The shipping
-app is still the Python build at the repo root (pywebview + local server); it
-stays fully working until the Electron build reaches proven parity. Nothing here
-is wired into releases yet.
+This is the **shipping** NineLives app (as of v1.0.0): Electron (Chromium) with a
+Node backend. Releases are built and published by [`.github/workflows/electron.yml`](../.github/workflows/electron.yml)
+on `v*` tags. The original Python build at the repo root is kept for reference but
+is no longer shipped.
 
-The backend is being rewritten from Python to Node, module by module, each
-validated against the Python behaviour.
+A fresh install ships a **bundled example** ([`../examples/`](../examples)) — a
+sample WPA capture (pre-loaded in Captures) and a demo wordlist — so it cracks
+`Coherer` → `Induction` out of the box with no setup.
 
 ## Layout
 
@@ -61,4 +62,6 @@ NINELIVES_SMOKE=1 npm run smoke   # boot the window headless-ish, print state, e
   electron.yml`) that builds the installers and smoke-tests the **packaged** app
   (captures parity test too). hashcat/wordlists are stubbed here; full vendor
   bundling + release wiring land at cutover.
-- **Phase 4:** cutover — Electron becomes the shipped app; retire pywebview.
+- **Phase 4 ✅:** cutover — Electron is the shipped app (v1.0.0); bundled examples
+  for out-of-box cracking; `v*` tags build + release the Electron installers; the
+  Python build is archived.

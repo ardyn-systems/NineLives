@@ -8,10 +8,12 @@ equipment you own or are explicitly scoped to test.
 Screenshots are regenerated with `python docs/screenshots.py` (see
 [contributing to the docs](#keeping-the-docs-current)).
 
-> This guide covers the current shipping build. An **Electron rewrite** is in
-> testing and will become the release at cutover; the workflow below (Crack,
-> Captures, Themes, Settings) is the same there, so this guide carries over. See
-> [`electron/README.md`](../electron/README.md) for migration status.
+> As of v1.0.0, NineLives is an **Electron** app. A fresh install ships a
+> **bundled example** — a sample *Coherer* WPA capture (pre-loaded in Captures)
+> and a demo wordlist — so you can crack it immediately: **Captures → Use in
+> Crack → pick `wpa-demo.txt` → Run** recovers `Induction`. The workflow below
+> (Crack, Captures, Themes, Settings) is unchanged. See
+> [`electron/README.md`](../electron/README.md) for the app internals.
 
 ## Install
 
