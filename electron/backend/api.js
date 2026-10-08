@@ -7,6 +7,7 @@
 const fs = require("fs");
 const path = require("path");
 const { EventEmitter } = require("events");
+const { spawn, execFile } = require("child_process");
 
 const { DATA_DIR } = require("./paths");
 const settings = require("./settings");
@@ -19,6 +20,14 @@ const captures = require("./captures");
 const APP_VERSION = require("../package.json").version;
 const CAPT_DIR = path.join(DATA_DIR, "captures");
 const HASH_DIR = path.join(DATA_DIR, "hashes");
+const POTFILE = path.join(DATA_DIR, "ninelives.potfile");
+
+function quoteArg(a) {
+  return /[\s"]/.test(a) ? '"' + a.replace(/"/g, '\\"') + '"' : a;
+}
+function cmdToString(cmd) {
+  return cmd.map(quoteArg).join(" ");
+}
 
 class Api extends EventEmitter {
   constructor() {
@@ -27,8 +36,31 @@ class Api extends EventEmitter {
     this.catalog.scan();
     this.modes = hashcat.loadHashModes();
     this.modeById = new Map(this.modes.map((m) => [m.id, m]));
+    this.optByKey = new Map(compat.OPTIONS.map((o) => [o.long || o.flag, o]));
+    this.proc = null;
+    this._refreshed = false;
     fs.mkdirSync(CAPT_DIR, { recursive: true });
     fs.mkdirSync(HASH_DIR, { recursive: true });
+  }
+
+  // Background: run the slow hashcat probes (--help, --version) off the UI path
+  // and push the full catalog + version to the page. Never blocks get_init.
+  _refreshCatalog() {
+    const p = hashcat.findHashcat();
+    if (!p) return;
+    const wd = hashcat.hashcatWorkdir();
+    execFile(p, ["--help"], { cwd: wd, timeout: 40000, maxBuffer: 64 * 1024 * 1024 }, (err, stdout) => {
+      const modes = hashcat.parseHashModesText(stdout || "");
+      if (modes.length) {
+        hashcat.cacheHashModes(modes);
+        this.modes = modes;
+        this.modeById = new Map(this.modes.map((m) => [m.id, m]));
+      }
+      execFile(p, ["--version"], { cwd: wd, timeout: 20000 }, (e2, vOut) => {
+        const m = /\d+\.\d+(?:\.\d+)?/.exec(vOut || "");
+        this._emit("hbCatalog", this.modes, m ? m[0] : "");
+      });
+    });
   }
 
   _emit(fn, ...args) {
@@ -47,6 +79,10 @@ class Api extends EventEmitter {
 
   get_init() {
     const p = hashcat.findHashcat();
+    if (p && !this._refreshed) {
+      this._refreshed = true;
+      setImmediate(() => this._refreshCatalog());
+    }
     return {
       themes: themes.ORDER.map((t) => ({ id: t, name: themes.THEMES[t].name, note: themes.THEMES[t].note, swatch: themes.THEMES[t].swatch })),
       current_theme: settings.get("ui_theme", themes.DEFAULT),
@@ -195,21 +231,103 @@ class Api extends EventEmitter {
     return { count: kept.length };
   }
 
+  // ---- crack ------------------------------------------------------------
+  _assemble(p) {
+    const hcPath = hashcat.findHashcat();
+    if (p.mode_id == null) return [null, "Pick a hash type."];
+    if (!p.hashfile) return [null, "Pick a hash file."];
+    const aid = parseInt(p.attack_id, 10);
+    const cmd = [hcPath || "hashcat", "-m", String(p.mode_id), "-a", String(aid), p.hashfile];
+    for (const slot of compat.inputsFor(aid)) {
+      if (slot === "wordlist" || slot === "wordlist2") {
+        const wl = p[slot];
+        if (!wl) return [null, `Pick a ${slot}.`];
+        cmd.push(wl);
+      } else if (slot === "mask") {
+        const mask = (p.mask || "").trim();
+        if (!mask) return [null, "Enter a mask."];
+        cmd.push(mask);
+      }
+    }
+    for (const o of p.options || []) {
+      const opt = this.optByKey.get(o.key);
+      if (!opt) continue;
+      const flag = opt.flag || opt.long;
+      if (opt.takes_value) {
+        if (o.value) cmd.push(flag, o.value);
+      } else {
+        cmd.push(flag);
+      }
+    }
+    if (!(p.options || []).some((o) => o.key === "--potfile-disable")) cmd.push("--potfile-path", POTFILE);
+    return [cmd, null];
+  }
+
+  build_command(p) {
+    const [cmd, err] = this._assemble(p);
+    return err ? { error: err } : { command: cmdToString(cmd) };
+  }
+
+  run(p) {
+    if (this.proc) return { error: "A crack is already running." };
+    if (!hashcat.findHashcat()) return { error: "hashcat not installed (Settings - install/update)." };
+    const [cmd, err] = this._assemble(p);
+    if (err) return { error: err };
+    let proc;
+    try {
+      proc = spawn(cmd[0], cmd.slice(1), { cwd: hashcat.hashcatWorkdir() });
+    } catch (e) {
+      return { error: `Could not start hashcat: ${e.message || e}` };
+    }
+    this.proc = proc;
+    let buf = "";
+    const onData = (chunk) => {
+      buf += chunk.toString();
+      let idx;
+      while ((idx = buf.indexOf("\n")) >= 0) {
+        this._emit("hbOutput", buf.slice(0, idx + 1));
+        buf = buf.slice(idx + 1);
+      }
+    };
+    proc.stdout.on("data", onData);
+    proc.stderr.on("data", onData);
+    proc.on("close", () => {
+      if (buf) this._emit("hbOutput", buf);
+      this.proc = null;
+      this._emit("hbDone");
+    });
+    proc.on("error", (e) => {
+      this._emit("hbOutput", `[error] ${e.message}\n`);
+      this.proc = null;
+      this._emit("hbDone");
+    });
+    return { command: cmdToString(cmd) };
+  }
+
+  stop() {
+    if (this.proc) {
+      try {
+        this.proc.kill();
+      } catch {
+        /* ignore */
+      }
+    }
+    return { ok: true };
+  }
+
+  show_recovered(p) {
+    const hcPath = hashcat.findHashcat();
+    if (!hcPath) return { text: "hashcat not installed." };
+    if (p.mode_id == null || !p.hashfile) return { text: "Pick a hash type and file first." };
+    const { spawnSync } = require("child_process");
+    const r = spawnSync(hcPath, ["-m", String(p.mode_id), p.hashfile, "--show", "--potfile-path", POTFILE],
+      { cwd: hashcat.hashcatWorkdir(), encoding: "utf8", timeout: 30000 });
+    return { text: (r.stdout || "") };
+  }
+
   // ---- stubs filled in later phases --------------------------------------
   list_wordlist_downloads() {
     return { items: [] }; // Phase 2
-  }
-  build_command() {
-    return { error: "Cracking is not wired up in this build yet." };
-  }
-  run() {
-    return { error: "Cracking arrives in the next migration phase." };
-  }
-  stop() {
-    return { ok: true };
-  }
-  show_recovered() {
-    return { text: "" };
   }
   check_update() {
     return { current: hashcat.currentVersion(), latest: "", update_available: false };
