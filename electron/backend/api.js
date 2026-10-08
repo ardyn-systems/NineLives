@@ -134,7 +134,7 @@ class Api extends EventEmitter {
     for (const [grp, opts] of groups) {
       out.push({
         group: grp,
-        options: opts.map((o) => ({ key: o.long || o.flag, flag: o.flag, long: o.long, takes_value: o.takes_value, desc: o.desc, example: o.example })),
+        options: opts.map((o) => ({ key: o.long || o.flag, flag: o.flag, long: o.long, takes_value: o.takes_value, desc: o.desc, example: o.example, label: o.label, choices: o.choices })),
       });
     }
     return { groups: out };

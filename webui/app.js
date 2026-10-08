@@ -312,20 +312,51 @@ function buildOptions(groups) {
   S.optionsMeta = new Map();
   let count = 0;
   const host = el("options");
-  host.innerHTML = groups.map((g) => `
-    <div class="optgroup"><h3>${esc(g.group)}</h3>
-      ${g.options.map((o) => {
-        S.optionsMeta.set(o.key, o); count++;
-        const flag = (o.flag ? o.flag + ", " : "") + o.long;
-        const val = o.takes_value
-          ? `<input class="val" type="text" data-val="${esc(o.key)}" placeholder="${esc((o.example || "").split(" ").pop())}">`
-          : `<span></span>`;
-        return `<div class="opt">
-          <input type="checkbox" data-opt="${esc(o.key)}" title="${esc(o.desc)}">
-          <span class="flag" title="${esc(o.desc)}">${esc(flag)}</span>
-          ${val}
-          <span class="desc">${esc(o.desc)}</span></div>`;
-      }).join("")}</div>`).join("");
+  // "Advanced" starts collapsed; everything else is open.
+  host.innerHTML = groups.map((g) => {
+    const open = /advanced/i.test(g.group) ? "" : "open";
+    const rows = g.options.map((o) => {
+      S.optionsMeta.set(o.key, o); count++;
+      const name = o.label || ((o.flag ? o.flag + ", " : "") + o.long);
+      const flagRef = (o.flag ? o.flag + ", " : "") + o.long;
+      let val = "";
+      if (o.takes_value && Array.isArray(o.choices) && o.choices.length) {
+        const opts = o.choices.map((c) => {
+          const v = typeof c === "string" ? c : c.value;
+          const l = typeof c === "string" ? c : c.label;
+          return `<option value="${esc(v)}">${esc(l)}</option>`;
+        }).join("");
+        val = `<select class="val select" data-val="${esc(o.key)}">
+            <option value="">(default)</option>${opts}</select>`;
+      } else if (o.takes_value) {
+        const ph = (o.example || "").split(" ").pop();
+        val = `<input class="val" type="text" data-val="${esc(o.key)}" placeholder="${esc(ph)}">`;
+      }
+      return `<div class="opt">
+          <label class="switch" title="${esc(o.desc)}">
+            <input type="checkbox" data-opt="${esc(o.key)}">
+            <span class="track"></span>
+          </label>
+          <div class="opt-main">
+            <span class="opt-label">${esc(name)}</span>
+            <span class="opt-desc">${esc(o.desc)}</span>
+            <span class="opt-flag" title="hashcat flag">${esc(flagRef)}</span>
+          </div>
+          <div class="opt-val">${val}</div>
+        </div>`;
+    }).join("");
+    return `<details class="optgroup" ${open}>
+        <summary>${esc(g.group)}</summary>
+        <div class="optgroup-body">${rows}</div>
+      </details>`;
+  }).join("");
+  // Typing/picking a value auto-enables its toggle (less clicking).
+  host.querySelectorAll("[data-val]").forEach((vi) => {
+    vi.addEventListener("input", () => {
+      const cb = host.querySelector(`input[data-opt="${CSS.escape(vi.dataset.val)}"]`);
+      if (cb) cb.checked = !!vi.value;
+    });
+  });
   el("opt-count").textContent = `${count}`;
 }
 
@@ -337,8 +368,8 @@ function gatherParams() {
     if (!cb.checked) return;
     const key = cb.dataset.opt;
     let value = "";
-    const vi = document.querySelector(`#options input[data-val="${CSS.escape(key)}"]`);
-    if (vi) value = vi.value.trim();
+    const vi = document.querySelector(`#options [data-val="${CSS.escape(key)}"]`);
+    if (vi) value = (vi.value || "").trim();
     opts.push({ key, value });
   });
   const getSlot = (slot) => {
@@ -460,7 +491,35 @@ function wireEvents() {
   el("settings-btn").addEventListener("click", openSettings);
   el("settings-close").addEventListener("click", closeSettings);
   sOverlay.addEventListener("click", (e) => { if (e.target === sOverlay) closeSettings(); });
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeSettings(); });
+
+  // --- Guide dialog (?) + first-run tour ---
+  const gOverlay = el("guide-overlay");
+  const openGuide = () => gOverlay.classList.remove("hidden");
+  const closeGuide = () => {
+    gOverlay.classList.add("hidden");
+    try { localStorage.setItem("nl_guide_seen", "1"); } catch (_) {}
+  };
+  el("guide-btn").addEventListener("click", openGuide);
+  el("guide-close").addEventListener("click", closeGuide);
+  el("guide-ok").addEventListener("click", closeGuide);
+  gOverlay.addEventListener("click", (e) => { if (e.target === gOverlay) closeGuide(); });
+  el("guide-demo-btn").addEventListener("click", () => {
+    closeGuide();
+    const capTab = document.querySelector('.tab[data-view="captures"]');
+    if (capTab) capTab.click();
+    el("status").textContent = "Demo: on the Captures tab, click “Use in Crack” on "
+      + "the Coherer network, then press Run crack.";
+  });
+  // Show the guide once, the first time the app is opened.
+  let guideSeen = true;
+  try { guideSeen = localStorage.getItem("nl_guide_seen") === "1"; } catch (_) {}
+  if (!guideSeen) openGuide();
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape") return;
+    closeSettings();
+    closeGuide();
+  });
 
   // --- Window controls (frameless Electron window) ---
   if (window.nlwin) {
