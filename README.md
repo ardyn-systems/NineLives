@@ -4,9 +4,7 @@
   <img src="brand/ninelives-master.png" alt="NineLives" width="380">
 </p>
 
-A push-button GUI front-end for **hashcat**, for authorized password auditing —
-WPA/WPA2 handshakes/PMKIDs from your own access points, and other hashes from
-systems you're explicitly scoped to test.
+A push-button GUI front-end for **hashcat**, for authorized password auditing.
 
 It wraps hashcat (doesn't replace it) and stays in sync with it: the hash-type
 list and options come from hashcat itself, and the bundled hashcat engine
