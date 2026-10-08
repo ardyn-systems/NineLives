@@ -6,18 +6,31 @@
    so a slow WebView2 start can never strand the UI on "Starting…". */
 "use strict";
 
-// api().<method>(...args) → POST /api/<method> with the args as a JSON array.
-const _api = new Proxy({}, { get: (_t, name) => (...args) =>
+// Two transports:
+//  - Electron: window.nlapi (IPC bridge from preload) — nlapi.invoke(method,…).
+//  - Python server build: POST /api/<method> over HTTP (fetch).
+// api().<method>(...args) returns a promise either way.
+const _fetchApi = new Proxy({}, { get: (_t, name) => (...args) =>
   fetch("/api/" + String(name), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(args),
   }).then((r) => r.json()) });
-function api() { return _api; }
+const _bridgeApi = new Proxy({}, { get: (_t, name) => (...args) =>
+  window.nlapi.invoke(String(name), ...args) });
+function api() { return (window.nlapi && window.nlapi.invoke) ? _bridgeApi : _fetchApi; }
 
-// Long-poll the server's event stream and dispatch each event to its window.*
-// handler (window.hbOutput / hbDone / hbCatalog / hbWordlistStatus / hbWordlists).
-// Replaces the old evaluate_js push bridge. Runs for the life of the page.
+// Dispatch a server-pushed event to its window.* handler (hbOutput / hbDone /
+// hbCatalog / hbWordlistStatus / hbWordlists).
+function dispatchEvent(ev) {
+  const fn = window[ev && ev.fn];
+  if (typeof fn === "function") { try { fn(...(ev.args || [])); } catch (e) { /* ignore */ } }
+}
+// Electron pushes events over IPC; the HTTP build long-polls /api/events.
+function startEvents() {
+  if (window.nlapi && window.nlapi.onEvent) { window.nlapi.onEvent(dispatchEvent); return; }
+  pollEvents();
+}
 let _evCursor = 0;
 async function pollEvents() {
   for (;;) {
@@ -25,10 +38,7 @@ async function pollEvents() {
       const r = await fetch("/api/events?since=" + _evCursor);
       const data = await r.json();
       if (typeof data.cursor === "number") _evCursor = data.cursor;
-      for (const ev of data.events || []) {
-        const fn = window[ev.fn];
-        if (typeof fn === "function") { try { fn(...(ev.args || [])); } catch (e) { /* ignore */ } }
-      }
+      for (const ev of data.events || []) dispatchEvent(ev);
     } catch (e) {
       await new Promise((res) => setTimeout(res, 1000));  // server busy/restarting
     }
@@ -73,7 +83,7 @@ async function boot() {
   _booting = true;
   try {
     blog("boot: start");
-    pollEvents();               // begin draining server-pushed events
+    startEvents();              // begin receiving server-pushed events
     await _bootBody();
     _booted = true;
     blog("boot: done");
