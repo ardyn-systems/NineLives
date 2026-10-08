@@ -110,7 +110,6 @@ async function _bootBody() {
   S.attackModes = init.attack_modes;
   S.hashModes = init.hash_modes;
   document.documentElement.dataset.theme = init.current_theme;
-  buildThemeMenu(init.current_theme);
   buildThemeGrid(init.current_theme);
   buildHashTypes();
   buildAttackSeg();
@@ -126,6 +125,8 @@ async function _bootBody() {
   if (el("app-version-about")) el("app-version-about").textContent = init.app_version || "—";
   if (el("hc-version-about")) el("hc-version-about").textContent =
     init.hashcat.present ? (init.hashcat.version || "?") : "not installed";
+  if (el("about-mode")) el("about-mode").textContent =
+    S.hosted ? "Hosted (explore + extract)" : (window.nlwin ? "Desktop app" : "Local server");
   await selectAttack(0);
   wireEvents();
   if (S.hosted) applyHostedMode();
@@ -146,28 +147,12 @@ function applyHostedMode() {
   const sec = el("seclists"); if (sec) sec.disabled = true;
 }
 
-/* ---------- theme (titlebar menu + Settings › General grid, kept in sync) ---------- */
+/* ---------- theme (Settings › General grid) ---------- */
 function applyTheme(id) {
   document.documentElement.dataset.theme = id;
   api().set_theme(id);
-  document.querySelectorAll("#theme-menu .item").forEach((x) =>
-    x.setAttribute("aria-checked", x.dataset.id === id));
   document.querySelectorAll("#settings-themes .chip-btn").forEach((x) =>
     x.setAttribute("aria-checked", x.dataset.id === id));
-}
-function buildThemeMenu(current) {
-  const m = el("theme-menu");
-  m.innerHTML = S.themes.map((t) => `
-    <button class="item" role="menuitemradio" data-id="${t.id}"
-      aria-checked="${t.id === current}">
-      <span class="swatch">${t.swatch.map((c) => `<i style="background:${c}"></i>`).join("")}</span>
-      <span class="meta">${esc(t.name)}<small>${esc(t.note)}</small></span>
-      <span class="check">✓</span>
-    </button>`).join("");
-  m.querySelectorAll(".item").forEach((b) => b.addEventListener("click", () => {
-    applyTheme(b.dataset.id);
-    m.classList.add("hidden");
-  }));
 }
 function buildThemeGrid(current) {
   const g = el("settings-themes");
@@ -491,11 +476,6 @@ window.hbWordlists = (count) => {
 
 /* ---------- events ---------- */
 function wireEvents() {
-  el("theme-btn").addEventListener("click", (e) => {
-    e.stopPropagation(); el("theme-menu").classList.toggle("hidden");
-  });
-  document.addEventListener("click", () => el("theme-menu").classList.add("hidden"));
-
   const VIEWS = ["crack", "captures"];
   document.querySelectorAll(".tab").forEach((t) => t.addEventListener("click", () => {
     const v = t.dataset.view;
@@ -525,10 +505,10 @@ function wireEvents() {
   if (snav) snav.addEventListener("click", (e) => {
     const b = e.target.closest(".snav"); if (b) showSection(b.dataset.sec);
   });
-  // "Show the guide" button (General section)
-  el("show-guide-btn").addEventListener("click", () => {
-    closeSettings();
-    el("guide-overlay").classList.remove("hidden");
+  // "data-goto" deep links inside Settings (e.g. Help → About)
+  sOverlay.addEventListener("click", (e) => {
+    const g = e.target.closest("[data-goto]");
+    if (g) { e.preventDefault(); showSection(g.dataset.goto); }
   });
 
   // --- Guide dialog (?) + first-run tour ---
@@ -538,19 +518,22 @@ function wireEvents() {
     gOverlay.classList.add("hidden");
     try { localStorage.setItem("nl_guide_seen", "1"); } catch (_) {}
   };
-  el("guide-btn").addEventListener("click", openGuide);
-  const lg = el("link-guide");
-  if (lg) lg.addEventListener("click", () => { closeSettings(); openGuide(); });
-  el("guide-close").addEventListener("click", closeGuide);
-  el("guide-ok").addEventListener("click", closeGuide);
-  gOverlay.addEventListener("click", (e) => { if (e.target === gOverlay) closeGuide(); });
-  el("guide-demo-btn").addEventListener("click", () => {
+  const startDemo = () => {
     closeGuide();
+    closeSettings();
     const capTab = document.querySelector('.tab[data-view="captures"]');
     if (capTab) capTab.click();
     el("status").textContent = "Demo: on the Captures tab, click “Use in Crack” on "
       + "the Coherer network, then press Run crack.";
-  });
+  };
+  el("guide-btn").addEventListener("click", openGuide);
+  el("guide-close").addEventListener("click", closeGuide);
+  el("guide-ok").addEventListener("click", closeGuide);
+  gOverlay.addEventListener("click", (e) => { if (e.target === gOverlay) closeGuide(); });
+  el("guide-demo-btn").addEventListener("click", startDemo);
+  // Help section (Take the tour / Demo; the User guide + Report a problem are links)
+  el("help-tour").addEventListener("click", () => { closeSettings(); openGuide(); });
+  el("help-demo").addEventListener("click", startDemo);
   // Show the guide once, the first time the app is opened.
   let guideSeen = true;
   try { guideSeen = localStorage.getItem("nl_guide_seen") === "1"; } catch (_) {}
@@ -646,12 +629,13 @@ function wireEvents() {
   };
   el("update-btn2").addEventListener("click", doUpdate);
 
-  // NineLives self-update (NetSeer-style). "Check for updates" probes; if one
-  // exists an "Update now" button appears and installs immediately when clicked —
-  // no extra confirm dialog (the click IS the go-ahead). An available update also
-  // lights the cog's update-dot and the Updates tab's "New" badge.
+  // NineLives self-update (NetSeer-style, no prompts). A check — the on-startup
+  // auto-check, or the button — finds a release, downloads it in the background,
+  // then reveals a "Restart NineLives" button, the only action needed. The
+  // install is silent (NSIS /S). An available update also lights the cog's
+  // update-dot and the Updates tab's "New" badge.
   const appBtn = el("app-update-btn");
-  const appNow = el("app-update-now");
+  const appRestart = el("app-restart");
   const setStatus = (text, cls) => {
     const m = el("app-update-msg");
     m.className = "update-status" + (cls ? " " + cls : "");
@@ -661,16 +645,24 @@ function wireEvents() {
     el("update-dot").classList.toggle("hidden", !on);
     el("updates-badge").classList.toggle("hidden", !on);
   };
-  const startSelfUpdate = async (latest) => {
-    appNow.disabled = true;
-    appNow.textContent = `installing v${latest}…`;
-    setStatus("Downloading and installing — the app will close to run the installer and reopen.", "new");
-    out(`\n[app-update] updating to v${latest}…\n`, "cmd");
-    await api().install_self_update();
+  let restartWired = false;
+  const armRestart = (version) => {
+    flagUpdate(true);
+    setStatus(`NineLives v${version} is ready to install.`, "new");
+    appRestart.classList.remove("hidden");
+    if (!restartWired) {
+      restartWired = true;
+      appRestart.addEventListener("click", () => {
+        appRestart.disabled = true;
+        setStatus("Installing — NineLives will close and reopen on the new version.", "new");
+        out("\n[app-update] restarting to install…\n", "cmd");
+        api().apply_self_update();
+      });
+    }
   };
-  // The actual check, reused by the button and the on-open auto-check.
+  // Check, then (desktop) download in the background. quiet = startup auto-run.
   const runSelfCheck = async (quiet) => {
-    appNow.classList.add("hidden");
+    appRestart.classList.add("hidden");
     if (!quiet) setStatus("checking…");
     let r;
     try { r = await api().check_self_update(); }
@@ -689,15 +681,17 @@ function wireEvents() {
         `v${esc(r.latest)} available — <a href="${esc(r.url)}" target="_blank" rel="noopener">download from Releases</a>.`;
       return;
     }
-    setStatus(`v${r.latest} is available (you have v${r.current}).`, "new");
-    appNow.textContent = `Update now to v${r.latest}`;
-    appNow.disabled = false;
-    appNow.classList.remove("hidden");
-    appNow.onclick = () => startSelfUpdate(r.latest);
+    // Desktop: download now (no prompt), then offer Restart.
+    setStatus(`Downloading NineLives v${r.latest} in the background…`, "new");
+    let d;
+    try { d = await api().download_self_update(); }
+    catch (e) { setStatus("Update download failed — try again later.", "bad"); return; }
+    if (d && d.ready) armRestart(d.version || r.latest);
+    else setStatus((d && d.error) || "Update download failed — try again later.", "bad");
   };
   if (appBtn) appBtn.addEventListener("click", () => runSelfCheck(false));
 
-  // "Check when NineLives opens" preference (localStorage; default on).
+  // "Update automatically" preference (localStorage; default on).
   const auto = el("updates-auto");
   let autoOn = true;
   try { autoOn = localStorage.getItem("nl_update_auto") !== "0"; } catch (_) {}
@@ -707,7 +701,8 @@ function wireEvents() {
       try { localStorage.setItem("nl_update_auto", auto.checked ? "1" : "0"); } catch (_) {}
     });
   }
-  // On open: silently check at most once a day, to light the badge/dot.
+  // On startup: if auto is on, check + download in the background (at most once a
+  // day) so all that's left for the user is the Restart button.
   if (autoOn && !S.hosted) {
     let last = 0;
     try { last = Number(localStorage.getItem("nl_update_checked")) || 0; } catch (_) {}

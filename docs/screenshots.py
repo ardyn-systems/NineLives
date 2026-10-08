@@ -84,16 +84,12 @@ def main() -> int:
             page.wait_for_timeout(400)
             shot("captures")
 
-            page.click("#settings-btn")   # Settings is a cog-opened dialog now
+            # Settings is a cog-opened dialog; it opens on the General section,
+            # which shows the theme swatch grid (also used for the Themes doc).
+            page.click("#settings-btn")
             page.wait_for_timeout(300)
             shot("settings")
             page.click("#settings-close")
-
-            page.click('.tab[data-view="crack"]')
-            page.wait_for_timeout(200)
-            page.click("#theme-btn")
-            page.wait_for_timeout(300)
-            shot("theme-menu")
 
             browser.close()
         return 0

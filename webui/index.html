@@ -20,12 +20,6 @@
     </div>
     <div class="status drag" id="status">starting…</div>
     <div class="top-actions">
-      <div class="menu-wrap">
-        <button class="icon-btn" id="theme-btn" title="Theme" aria-label="Theme">
-          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18c.9 0 1.5-.7 1.5-1.5 0-.4-.2-.8-.4-1-.3-.3-.4-.6-.4-1 0-.8.7-1.5 1.5-1.5H16a5 5 0 0 0 5-5c0-4.4-4-8-9-8Z" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="7.5" cy="12" r="1.2" fill="currentColor"/><circle cx="10.5" cy="7.5" r="1.2" fill="currentColor"/><circle cx="15" cy="7.5" r="1.2" fill="currentColor"/></svg>
-        </button>
-        <div class="menu hidden" id="theme-menu"></div>
-      </div>
       <button class="icon-btn" id="guide-btn" title="Guide" aria-label="Guide" aria-haspopup="dialog">
         <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M9.3 9.2a2.7 2.7 0 0 1 5.2 1c0 1.8-2.7 2-2.7 3.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="12" cy="17.2" r="1.1" fill="currentColor"/></svg>
       </button>
@@ -145,7 +139,9 @@
         <nav class="settings-nav" id="settings-nav" role="tablist" aria-label="Settings sections">
           <button class="snav active" data-sec="general" role="tab" aria-selected="true">General</button>
           <button class="snav" data-sec="wordlists" role="tab" aria-selected="false">Wordlists</button>
+          <button class="snav" data-sec="integrations" role="tab" aria-selected="false">Integrations</button>
           <button class="snav" data-sec="updates" role="tab" aria-selected="false">Updates<span id="updates-badge" class="nav-badge hidden">New</span></button>
+          <button class="snav" data-sec="help" role="tab" aria-selected="false">Help</button>
           <button class="snav" data-sec="about" role="tab" aria-selected="false">About</button>
         </nav>
         <div class="settings-content">
@@ -155,11 +151,6 @@
             <div class="setting-block">
               <h3>Theme</h3>
               <div id="settings-themes" class="theme-grid" role="radiogroup" aria-label="Theme"></div>
-            </div>
-            <div class="setting-block">
-              <h3>Guide</h3>
-              <p class="sub">Not sure where to start? Reopen the welcome walkthrough.</p>
-              <div class="row"><button class="btn" id="show-guide-btn">Show the guide</button></div>
             </div>
           </section>
 
@@ -181,6 +172,22 @@
             </div>
           </section>
 
+          <!-- Integrations (placeholder for future companion-app features) -->
+          <section class="ssec hidden" data-sec="integrations">
+            <div class="setting-block">
+              <h3>Companion apps</h3>
+              <p class="sub">Let apps push hashes and captures straight into NineLives —
+                no saving to a file first.</p>
+              <div class="version-card">
+                <div>
+                  <strong>Coming soon</strong>
+                  <span class="hint">Device pairing and a local integration API are
+                    planned for a future release.</span>
+                </div>
+              </div>
+            </div>
+          </section>
+
           <!-- Updates -->
           <section class="ssec hidden" data-sec="updates">
             <div class="setting-block">
@@ -194,8 +201,8 @@
                 <button class="btn" id="app-update-btn">Check for updates</button>
               </div>
               <p class="update-status" id="app-update-msg" role="status" aria-live="polite"></p>
-              <div class="row"><button class="btn primary hidden" id="app-update-now">Update now</button></div>
-              <label class="switch-row"><span>Check when NineLives opens<small>Asks GitHub about new releases at most once a day. Nothing about you or your hashes is sent.</small></span>
+              <div class="row"><button class="btn primary hidden" id="app-restart">Restart NineLives</button></div>
+              <label class="switch-row"><span>Update automatically<small>On startup, NineLives quietly checks GitHub and downloads a new release in the background. Then just click <b>Restart NineLives</b> to finish — no prompts. Turn this off to only check when you press the button.</small></span>
                 <input id="updates-auto" type="checkbox" role="switch"></label>
             </div>
             <div class="setting-block">
@@ -210,20 +217,45 @@
             </div>
           </section>
 
+          <!-- Help -->
+          <section class="ssec hidden" data-sec="help">
+            <div class="help-cards">
+              <button id="help-tour" class="chip-btn" type="button">Take the tour<small>A quick walk through how NineLives works</small></button>
+              <a id="help-guide" class="chip-btn" href="https://github.com/ardyn-systems/NineLives/blob/main/docs/user-guide.md" target="_blank" rel="noopener">User guide<small>Every feature, with screenshots</small></a>
+              <a id="help-report" class="chip-btn" href="https://github.com/ardyn-systems/NineLives/issues/new" target="_blank" rel="noopener">Report a problem<small>Opens a new issue on GitHub</small></a>
+              <button id="help-demo" class="chip-btn" type="button">Demo<small>Crack the bundled Coherer capture</small></button>
+            </div>
+            <p class="hint">When you report a problem, include the version shown under
+              <a href="#" data-goto="about">About</a>. Don't attach captures from a
+              network you need to keep private.</p>
+          </section>
+
           <!-- About -->
           <section class="ssec hidden" data-sec="about">
-            <div class="setting-block">
-              <h3>About NineLives</h3>
-              <p class="sub">A push-button console for <b>hashcat</b> — pick a hash or
-                capture, pick an attack, pick a wordlist, and crack. For authorized
-                password auditing only.</p>
-              <p class="hint">Version <b id="app-version-about">—</b> · hashcat <b id="hc-version-about">—</b></p>
-              <div class="row about-links">
-                <a class="btn ghost small" id="link-guide">Open the guide</a>
-                <a class="btn ghost small" href="https://github.com/ardyn-systems/NineLives/releases" target="_blank" rel="noopener">Releases</a>
-                <a class="btn ghost small" href="https://github.com/ardyn-systems/NineLives" target="_blank" rel="noopener">Project on GitHub</a>
+            <div class="about-head">
+              <img class="brand-mark" src="logo.png" width="64" height="64" alt="">
+              <div>
+                <h3 class="about-name">NineLives</h3>
+                <p class="about-motto">Push-button hashcat console.</p>
               </div>
             </div>
+            <dl class="about-facts">
+              <dt>Version</dt><dd id="app-version-about">—</dd>
+              <dt>Running as</dt><dd id="about-mode">—</dd>
+              <dt>hashcat</dt><dd id="hc-version-about">—</dd>
+              <dt>Source</dt><dd><a href="https://github.com/ardyn-systems/NineLives" target="_blank" rel="noopener">github.com/ardyn-systems/NineLives</a></dd>
+            </dl>
+            <p class="hint">NineLives drives <b>hashcat</b> to recover passwords from
+              hashes and Wi-Fi captures — for authorized password auditing only.
+              Hashes, captures, and results stay on this machine.</p>
+            <h3>Built with</h3>
+            <ul class="credits">
+              <li><span>hashcat</span><span>MIT</span></li>
+              <li><span>Electron</span><span>MIT</span></li>
+              <li><span>Node.js</span><span>MIT</span></li>
+              <li><span>SecLists</span><span>MIT</span></li>
+            </ul>
+            <p class="hint">© Ardyn Systems. All rights reserved.</p>
           </section>
 
         </div>
