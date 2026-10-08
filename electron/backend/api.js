@@ -75,7 +75,7 @@ class Api extends EventEmitter {
     const p = hashcat.findHashcat();
     if (!p) return;
     const wd = hashcat.hashcatWorkdir();
-    execFile(p, ["--help"], { cwd: wd, timeout: 40000, maxBuffer: 64 * 1024 * 1024 }, (err, stdout) => {
+    execFile(p, ["-hh"], { cwd: wd, timeout: 40000, maxBuffer: 64 * 1024 * 1024 }, (err, stdout) => {
       const modes = hashcat.parseHashModesText(stdout || "");
       if (modes.length) {
         hashcat.cacheHashModes(modes);
@@ -394,10 +394,12 @@ class Api extends EventEmitter {
       try {
         const ver = await updater.install(version, (m) => this._emit("hbOutput", `[update] ${m}\n`));
         this._emit("hbOutput", `[update] done: hashcat ${ver}\n`);
-        const modes = hashcat.refreshHashModes();
+        const modes = hashcat.parseHashModes();
         if (modes.length) {
+          hashcat.cacheHashModes(modes);
           this.modes = modes;
           this.modeById = new Map(this.modes.map((m) => [m.id, m]));
+          this._emit("hbCatalog", this.modes, hashcat.currentVersion());
         }
       } catch (e) {
         this._emit("hbOutput", `[update] failed: ${e.message || e}\n`);
