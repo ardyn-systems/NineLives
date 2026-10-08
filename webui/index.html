@@ -20,11 +20,11 @@
     </div>
     <div class="status drag" id="status">starting…</div>
     <div class="top-actions">
-      <button class="icon-btn" id="guide-btn" title="Guide" aria-label="Guide" aria-haspopup="dialog">
+      <button class="icon-btn" id="guide-btn" title="Take the tour" aria-label="Take the tour">
         <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M9.3 9.2a2.7 2.7 0 0 1 5.2 1c0 1.8-2.7 2-2.7 3.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="12" cy="17.2" r="1.1" fill="currentColor"/></svg>
       </button>
       <button class="icon-btn" id="settings-btn" title="Settings" aria-label="Settings" aria-haspopup="dialog">
-        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>
         <span id="update-dot" class="update-dot hidden" aria-hidden="true"></span>
       </button>
     </div>
@@ -263,55 +263,19 @@
     </div>
   </div>
 
-  <!-- ===== Guide dialog (opened by the ? button, and once on first run) ===== -->
-  <div id="guide-overlay" class="overlay hidden">
-    <div class="settings-panel guide-panel">
-      <div class="settings-head">
-        <h2>Welcome to NineLives</h2>
-        <button class="icon-btn" id="guide-close" title="Close" aria-label="Close guide">
-          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.8" fill="none"/></svg>
-        </button>
-      </div>
-      <div class="settings-body">
-        <p class="guide-lead">Recover passwords from hashes and Wi-Fi captures with
-          hashcat — no command line required. Here's the whole flow:</p>
-        <ol class="guide-steps">
-          <li>
-            <span class="gs-n">1</span>
-            <div><b>Pick what to crack.</b> Choose a hash file on the <b>Crack</b> tab,
-              or drop a <code>.pcap</code>/<code>.cap</code> on the <b>Captures</b> tab
-              and click <b>Use in Crack</b>.</div>
-          </li>
-          <li>
-            <span class="gs-n">2</span>
-            <div><b>Confirm the hash type.</b> Loading a capture fills this in for you.
-              Otherwise start in <b>★ Common</b>, or search by name or number
-              (e.g. <code>WPA</code>, <code>NTLM</code>, <code>1000</code>).</div>
-          </li>
-          <li>
-            <span class="gs-n">3</span>
-            <div><b>Choose an attack.</b> <b>Straight (dictionary)</b> is the usual
-              starting point. Pick a wordlist — grab bigger ones from the
-              <b>⚙ Settings</b> dialog.</div>
-          </li>
-          <li>
-            <span class="gs-n">4</span>
-            <div><b>Run it.</b> Press <b>Run crack</b> and watch the plain-language
-              status bar. Need the raw hashcat output? Click <b>Show console</b>.</div>
-          </li>
-          <li>
-            <span class="gs-n">5</span>
-            <div><b>Get results.</b> Cracked passwords show in the status bar and under
-              <b>Show recovered</b>.</div>
-          </li>
-        </ol>
-        <p class="guide-demo-note">New here? The demo loads a bundled Wi-Fi capture
-          (<b>Coherer</b>). Crack it to recover the password <b>“Induction.”</b></p>
-      </div>
-      <div class="settings-foot">
-        <button class="btn primary" id="guide-demo-btn">Try the demo</button>
-        <span class="spacer"></span>
-        <button class="btn" id="guide-ok">Got it</button>
+  <!-- ===== Spotlight tour (? button, Help › Take the tour, and once on first run) ===== -->
+  <div id="tour" class="tour hidden" role="dialog" aria-modal="true" aria-labelledby="tour-title">
+    <div id="tour-spot" class="tour-spot"></div>
+    <div id="tour-card" class="tour-card">
+      <span id="tour-step" class="tour-step"></span>
+      <h2 id="tour-title"></h2>
+      <p id="tour-text"></p>
+      <div class="tour-actions">
+        <button id="tour-skip" class="btn ghost small" type="button">Skip tour</button>
+        <span>
+          <button id="tour-back" class="btn small" type="button">Back</button>
+          <button id="tour-next" class="btn primary small" type="button">Next</button>
+        </span>
       </div>
     </div>
   </div>

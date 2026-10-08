@@ -166,6 +166,102 @@ function buildThemeGrid(current) {
     b.addEventListener("click", () => applyTheme(b.dataset.id)));
 }
 
+/* ---------- spotlight tour (NetSeer-style: cut-out box + floating card) ---------- */
+const TOUR_STEPS = [
+  { title: "Welcome to NineLives",
+    text: "NineLives drives hashcat to recover passwords from hashes and Wi-Fi "
+      + "captures — no command line. This quick tour points out each piece. Use "
+      + "the buttons, or the arrow keys." },
+  { target: "#hashfile", title: "Pick what to crack",
+    text: "Choose a hash file here, or import a Wi-Fi capture on the Captures tab "
+      + "and click Use in Crack to load it for you." },
+  { target: ".ht-pick", title: "Set the hash type",
+    text: "Pick a category (start with ★ Common) and the exact mode — or just "
+      + "search by name or number, like WPA, NTLM, or 1000." },
+  { target: "#attack-seg", title: "Choose an attack",
+    text: "How candidates are generated. Straight (dictionary) is the usual "
+      + "starting point; the panels below adapt to your choice." },
+  { target: "#inputs-card", title: "Pick your inputs",
+    text: "Choose a wordlist (or type a mask). Starter lists ship built in; grab "
+      + "bigger ones from Settings › Wordlists." },
+  { target: "#options", title: "Tune the options",
+    text: "Only the options that work with your attack appear, as plain-language "
+      + "toggles and dropdowns — grouped and collapsible, so there's almost "
+      + "nothing to type." },
+  { target: "#run-btn", title: "Run it",
+    text: "Press Run crack. A plain-language status bar shows progress, speed, and "
+      + "recovered passwords. Show console reveals the raw hashcat output." },
+  { target: '.tab[data-view="captures"]', title: "Wi-Fi captures",
+    text: "Drop a .pcap/.cap here to pull out WPA/WPA2 handshakes, then send one "
+      + "straight to the Crack tab." },
+  { target: "#settings-btn", title: "Settings & updates",
+    text: "Themes, wordlists, automatic updates, help, and About live behind the "
+      + "cog. You can replay this tour any time from Help › Take the tour." },
+];
+const tour = { active: false, i: 0 };
+
+function startTour() {
+  el("settings-overlay").classList.add("hidden");       // in case it's open
+  const crackTab = document.querySelector('.tab[data-view="crack"]');
+  if (crackTab) crackTab.click();                        // targets live on the Crack tab
+  try { localStorage.setItem("nl_tour_seen", "1"); } catch (_) {}
+  tour.active = true;
+  el("tour").classList.remove("hidden");
+  showTourStep(0);
+}
+function endTour() {
+  tour.active = false;
+  el("tour").classList.add("hidden");
+  el("settings-btn").focus({ preventScroll: true });
+}
+function showTourStep(i) {
+  tour.i = Math.max(0, Math.min(TOUR_STEPS.length - 1, i));
+  const step = TOUR_STEPS[tour.i];
+  if (step.before) step.before();
+  el("tour-step").textContent = `${tour.i + 1} of ${TOUR_STEPS.length}`;
+  el("tour-title").textContent = step.title;
+  el("tour-text").textContent = step.text;
+  el("tour-back").disabled = tour.i === 0;
+  el("tour-next").textContent = tour.i === TOUR_STEPS.length - 1 ? "Done" : "Next";
+  placeTour();
+  el("tour-next").focus({ preventScroll: true });
+}
+function placeTour() {
+  const step = TOUR_STEPS[tour.i];
+  const spot = el("tour-spot");
+  const card = el("tour-card");
+  const vw = window.innerWidth, vh = window.innerHeight, m = 12;
+  const cw = card.offsetWidth, ch = card.offsetHeight;
+  const r = step.target ? document.querySelector(step.target)?.getBoundingClientRect() : null;
+  const visible = r && r.width > 0 && r.height > 0 && r.right > 0 && r.left < vw && r.bottom > 0 && r.top < vh;
+  let left = (vw - cw) / 2, top = (vh - ch) / 2;
+  spot.classList.toggle("none", !visible);
+  if (visible) {
+    const box = { left: Math.max(4, r.left - 6), top: Math.max(4, r.top - 6),
+      right: Math.min(vw - 4, r.right + 6), bottom: Math.min(vh - 4, r.bottom + 6) };
+    Object.assign(spot.style, { left: `${box.left}px`, top: `${box.top}px`,
+      width: `${box.right - box.left}px`, height: `${box.bottom - box.top}px` });
+    const midX = (box.left + box.right) / 2 - cw / 2;
+    const midY = (box.top + box.bottom) / 2 - ch / 2;
+    const gap = 12;
+    if (box.bottom + gap + ch <= vh - m) [left, top] = [midX, box.bottom + gap];
+    else if (box.top - gap - ch >= m) [left, top] = [midX, box.top - gap - ch];
+    else if (box.right + gap + cw <= vw - m) [left, top] = [box.right + gap, midY];
+    else if (box.left - gap - cw >= m) [left, top] = [box.left - gap - cw, midY];
+    else [left, top] = [midX, box.bottom - ch - 24];
+  }
+  card.style.left = `${Math.max(m, Math.min(left, vw - cw - m))}px`;
+  card.style.top = `${Math.max(m, Math.min(top, vh - ch - m))}px`;
+}
+function onTourKey(e) {
+  if (!tour.active) return;
+  if (e.key === "Escape") endTour();
+  else if (e.key === "ArrowRight") el("tour-next").click();
+  else if (e.key === "ArrowLeft" && tour.i > 0) showTourStep(tour.i - 1);
+  else return;
+  e.preventDefault();
+}
+
 /* ---------- hash types: category → mode (no 500-item scroll) ---------- */
 // Most-used modes, surfaced under "★ Common" so you rarely need the full list.
 const COMMON_IDS = [22000, 16800, 1000, 0, 100, 1400, 1700, 3200, 1800, 500,
@@ -511,39 +607,30 @@ function wireEvents() {
     if (g) { e.preventDefault(); showSection(g.dataset.goto); }
   });
 
-  // --- Guide dialog (?) + first-run tour ---
-  const gOverlay = el("guide-overlay");
-  const openGuide = () => gOverlay.classList.remove("hidden");
-  const closeGuide = () => {
-    gOverlay.classList.add("hidden");
-    try { localStorage.setItem("nl_guide_seen", "1"); } catch (_) {}
-  };
+  // --- Spotlight tour (?, Help › Take the tour, first run) ---
   const startDemo = () => {
-    closeGuide();
+    endTour();
     closeSettings();
     const capTab = document.querySelector('.tab[data-view="captures"]');
     if (capTab) capTab.click();
     el("status").textContent = "Demo: on the Captures tab, click “Use in Crack” on "
       + "the Coherer network, then press Run crack.";
   };
-  el("guide-btn").addEventListener("click", openGuide);
-  el("guide-close").addEventListener("click", closeGuide);
-  el("guide-ok").addEventListener("click", closeGuide);
-  gOverlay.addEventListener("click", (e) => { if (e.target === gOverlay) closeGuide(); });
-  el("guide-demo-btn").addEventListener("click", startDemo);
-  // Help section (Take the tour / Demo; the User guide + Report a problem are links)
-  el("help-tour").addEventListener("click", () => { closeSettings(); openGuide(); });
+  el("guide-btn").addEventListener("click", startTour);
+  el("help-tour").addEventListener("click", startTour);
   el("help-demo").addEventListener("click", startDemo);
-  // Show the guide once, the first time the app is opened.
-  let guideSeen = true;
-  try { guideSeen = localStorage.getItem("nl_guide_seen") === "1"; } catch (_) {}
-  if (!guideSeen) openGuide();
+  el("tour-next").addEventListener("click", () =>
+    (tour.i >= TOUR_STEPS.length - 1 ? endTour() : showTourStep(tour.i + 1)));
+  el("tour-back").addEventListener("click", () => showTourStep(tour.i - 1));
+  el("tour-skip").addEventListener("click", endTour);
+  window.addEventListener("resize", () => { if (tour.active) placeTour(); });
+  document.addEventListener("keydown", onTourKey);
+  // Run the tour once, the first time the app is opened (after layout settles).
+  let tourSeen = true;
+  try { tourSeen = localStorage.getItem("nl_tour_seen") === "1"; } catch (_) {}
+  if (!tourSeen) setTimeout(startTour, 450);
 
-  document.addEventListener("keydown", (e) => {
-    if (e.key !== "Escape") return;
-    closeSettings();
-    closeGuide();
-  });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeSettings(); });
 
   // --- Window controls (frameless Electron window) ---
   if (window.nlwin) {

@@ -26,9 +26,12 @@ Each build **bundles hashcat and a small wordlist starter set**, so it cracks ou
 of the box; grab bigger lists (rockyou etc.) from Settings (the cog) when you want
 them. Verify downloads against `SHA256SUMS-<os>.txt`.
 
-New to NineLives? The **? (Guide)** button in the top bar opens an in-app
-walkthrough — the same one that pops up the first time you launch — and its
-**Try the demo** button jumps you straight to the bundled Coherer capture.
+New to NineLives? The **? (Take the tour)** button in the top bar launches a
+guided **spotlight tour** — it dims the screen and highlights each control in
+turn (Target, hash type, attack, inputs, options, Run, Captures, the cog), with
+**Back / Next** and the arrow keys. It runs automatically the first time you open
+NineLives, and you can replay it any time from the **?** button or **Settings ›
+Help › Take the tour**.
 
 ## The Crack tab
 
@@ -104,7 +107,7 @@ left-hand menu of sections: **General**, **Wordlists**, **Integrations**,
     you press the button. An available update also lights a dot on the cog and a
     **New** badge on the Updates tab. (In the hosted demo it links to Releases.)
   - **hashcat engine** — check for and install hashcat updates.
-- **Help** — **Take the tour** (reopens the welcome guide), **User guide**,
+- **Help** — **Take the tour** (replays the spotlight tour), **User guide**,
   **Report a problem** (opens a GitHub issue), and **Demo** (jumps to the bundled
   Coherer capture).
 - **About** — what NineLives is, the app + hashcat versions, the source link, and
