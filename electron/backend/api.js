@@ -49,21 +49,29 @@ class Api extends EventEmitter {
 
   // On first run, preload the bundled sample capture so a fresh install can
   // crack straight away (with the bundled wpa-demo wordlist) — Coherer → Induction.
+  // Ensure the bundled Coherer demo is in the Captures list — on EVERY launch, so
+  // it survives app updates (and a stale path from an older install). We don't
+  // re-add it only if the user deleted it on purpose (demo_removed). The entry's
+  // path is refreshed to this build's examples dir each time, since it lives in
+  // the (read-only) install resources, not the writable data dir.
   _seedExamples() {
     try {
-      if (settings.get("examples_seeded")) return;
+      if (settings.get("demo_removed")) return;
       const sample = path.join(EXAMPLES_DIR, "Coherer-sample.hc22000");
       if (!fs.existsSync(sample)) return;
       const index = settings.get("captures_index", []) || [];
-      if (!index.some((e) => e.id === "Coherer-sample.hc22000")) {
+      const existing = index.find((e) => e.id === "Coherer-sample.hc22000");
+      if (existing) {
+        existing.path = sample;          // keep it valid across updates/relocation
+        existing.sample = true;
+      } else {
         index.push({
           id: "Coherer-sample.hc22000", source: "bundled example (wpa-Induction)",
           essid: "Coherer", bssid: "00:0c:41:82:b2:55", pmkid: true, handshake: true,
           path: sample, imported: "sample", sample: true,
         });
-        settings.set("captures_index", index);
       }
-      settings.set("examples_seeded", true);
+      settings.set("captures_index", index);
     } catch {
       /* ignore */
     }
@@ -245,12 +253,11 @@ class Api extends EventEmitter {
     const index = settings.get("captures_index", []) || [];
     const kept = index.filter((e) => e.id !== entryId);
     for (const e of index) {
-      if (e.id === entryId) {
-        try {
-          fs.unlinkSync(e.path);
-        } catch {
-          /* ignore */
-        }
+      if (e.id !== entryId) continue;
+      if (e.sample || entryId === "Coherer-sample.hc22000") {
+        settings.set("demo_removed", true);   // don't re-seed it on the next launch
+      } else if (e.path && e.path.startsWith(CAPT_DIR)) {
+        try { fs.unlinkSync(e.path); } catch { /* ignore */ }  // only delete our own files
       }
     }
     settings.set("captures_index", kept);
