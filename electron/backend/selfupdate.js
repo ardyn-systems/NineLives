@@ -72,13 +72,20 @@ async function download(assetUrl, name, progress) {
 
 // Apply a previously-downloaded update with no user input, then the caller quits
 // so the installer can replace files and relaunch.
-//  - Windows: run the NSIS installer silently (/S) — no wizard; it closes the
-//    running app, installs, and relaunches NineLives.
+//  - Windows: run the NSIS installer silently (/S) and relaunch the app. NSIS /S
+//    does NOT auto-launch after finishing, so we chain a short wait (lets this
+//    instance quit so the exe isn't locked), the silent install, then a start of
+//    our own exe — which the installer reinstalls in place at the same path.
 //  - Linux: launch the downloaded AppImage (the new version) detached.
-function applyInstaller(dest) {
-  const args = process.platform === "win32" && dest.toLowerCase().endsWith(".exe")
-    ? ["/S"] : [];
-  spawn(dest, args, { detached: true, stdio: "ignore" }).unref();
+function applyInstaller(dest, appExe) {
+  if (process.platform === "win32" && dest.toLowerCase().endsWith(".exe")) {
+    const exe = appExe || process.execPath;
+    const line = `ping -n 2 127.0.0.1 >nul & "${dest}" /S & start "" "${exe}"`;
+    spawn("cmd.exe", ["/c", line],
+      { detached: true, stdio: "ignore", windowsVerbatimArguments: true }).unref();
+    return true;
+  }
+  spawn(dest, [], { detached: true, stdio: "ignore" }).unref();
   return true;
 }
 
