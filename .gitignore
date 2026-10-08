@@ -15,8 +15,7 @@ captures/
 
 # Runtime / user state
 settings.json
-hashbench.db
-hashbench.potfile
+ninelives.potfile
 cracked.txt
 hash_modes.cache.json
 
