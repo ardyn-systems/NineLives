@@ -20,6 +20,9 @@ hashbench.potfile
 cracked.txt
 hash_modes.cache.json
 
+# Node / Electron (binaries fetched on install; the lockfile IS committed)
+node_modules/
+
 # Editor
 .idea/
 .vscode/
