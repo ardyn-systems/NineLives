@@ -78,19 +78,34 @@ neon, plus Terrain, Midnight, Daylight, and Blueprint. Your choice is remembered
 
 ## Settings
 
-Open Settings from the **cog (⚙)** in the top bar — it opens as a dialog.
+Open Settings from the **cog (⚙)** in the top bar — it opens as a dialog with a
+left-hand menu of sections: **General**, **Wordlists**, **Updates**, and
+**About**.
 
 ![The Settings dialog](images/settings.png)
 
+- **General**
+  - **Theme** — pick any of the six themes from a swatch grid (the same themes as
+    the top-bar theme button; your choice is remembered).
+  - **Guide** — reopen the welcome walkthrough.
 - **Wordlists** — installed builds ship a small **starter set**. Use **Download**
   next to a list (rockyou, xato-10M, darkc0de) to fetch the bigger lists from the
   SecLists project; they land in your data dir and appear in the dropdowns
   automatically. Or point the folder box at your own SecLists checkout — all
-  three sources feed the dropdowns. (Downloads run in the desktop app, not the
-  hosted demo.)
-- **hashcat** — check for and install hashcat updates.
-- **NineLives** — shows the version and checks the project's GitHub releases for
-  app updates.
+  sources feed the dropdowns. (Downloads run in the desktop app, not the hosted
+  demo.)
+- **Updates**
+  - **NineLives app** — shows your version and checks the project's GitHub
+    releases. Click **Check for updates**; if a newer version exists, an **Update
+    now to vX.Y.Z** button appears — clicking it **downloads and installs right
+    away** (no extra confirmation) and closes the app to run the installer and
+    reopen. **Check when NineLives opens** (on by default) quietly checks GitHub
+    at most once a day; when an update is waiting, a dot appears on the cog and a
+    **New** badge on the Updates tab. (In the hosted demo it links to the Releases
+    page instead.)
+  - **hashcat engine** — check for and install hashcat updates.
+- **About** — what NineLives is, the app + hashcat versions, and quick links to
+  the in-app guide, the Releases page, and the project repo.
 
 ## Hosted mode
 

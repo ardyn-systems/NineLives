@@ -111,6 +111,7 @@ async function _bootBody() {
   S.hashModes = init.hash_modes;
   document.documentElement.dataset.theme = init.current_theme;
   buildThemeMenu(init.current_theme);
+  buildThemeGrid(init.current_theme);
   buildHashTypes();
   buildAttackSeg();
   blog("boot: menus built");
@@ -122,6 +123,9 @@ async function _bootBody() {
   el("hc-info").textContent = init.hashcat.present
     ? `Found: ${init.hashcat.version}` : "Not installed yet.";
   if (el("app-version")) el("app-version").textContent = init.app_version || "—";
+  if (el("app-version-about")) el("app-version-about").textContent = init.app_version || "—";
+  if (el("hc-version-about")) el("hc-version-about").textContent =
+    init.hashcat.present ? (init.hashcat.version || "?") : "not installed";
   await selectAttack(0);
   wireEvents();
   if (S.hosted) applyHostedMode();
@@ -142,7 +146,15 @@ function applyHostedMode() {
   const sec = el("seclists"); if (sec) sec.disabled = true;
 }
 
-/* ---------- theme menu ---------- */
+/* ---------- theme (titlebar menu + Settings › General grid, kept in sync) ---------- */
+function applyTheme(id) {
+  document.documentElement.dataset.theme = id;
+  api().set_theme(id);
+  document.querySelectorAll("#theme-menu .item").forEach((x) =>
+    x.setAttribute("aria-checked", x.dataset.id === id));
+  document.querySelectorAll("#settings-themes .chip-btn").forEach((x) =>
+    x.setAttribute("aria-checked", x.dataset.id === id));
+}
 function buildThemeMenu(current) {
   const m = el("theme-menu");
   m.innerHTML = S.themes.map((t) => `
@@ -153,12 +165,20 @@ function buildThemeMenu(current) {
       <span class="check">✓</span>
     </button>`).join("");
   m.querySelectorAll(".item").forEach((b) => b.addEventListener("click", () => {
-    const id = b.dataset.id;
-    document.documentElement.dataset.theme = id;
-    api().set_theme(id);
-    m.querySelectorAll(".item").forEach((x) => x.setAttribute("aria-checked", x.dataset.id === id));
+    applyTheme(b.dataset.id);
     m.classList.add("hidden");
   }));
+}
+function buildThemeGrid(current) {
+  const g = el("settings-themes");
+  if (!g) return;
+  g.innerHTML = S.themes.map((t) => `
+    <button class="chip-btn" role="radio" data-id="${t.id}" aria-checked="${t.id === current}">
+      <span class="theme-swatch">${t.swatch.map((c) => `<i style="background:${c}"></i>`).join("")}</span>
+      <span class="theme-name">${esc(t.name)}<small>${esc(t.note)}</small></span>
+    </button>`).join("");
+  g.querySelectorAll(".chip-btn").forEach((b) =>
+    b.addEventListener("click", () => applyTheme(b.dataset.id)));
 }
 
 /* ---------- hash types: category → mode (no 500-item scroll) ---------- */
@@ -491,6 +511,25 @@ function wireEvents() {
   el("settings-btn").addEventListener("click", openSettings);
   el("settings-close").addEventListener("click", closeSettings);
   sOverlay.addEventListener("click", (e) => { if (e.target === sOverlay) closeSettings(); });
+  // Section nav (General / Wordlists / Updates / About)
+  const snav = el("settings-nav");
+  const showSection = (sec) => {
+    snav.querySelectorAll(".snav").forEach((x) => {
+      const on = x.dataset.sec === sec;
+      x.classList.toggle("active", on);
+      x.setAttribute("aria-selected", on ? "true" : "false");
+    });
+    sOverlay.querySelectorAll(".ssec").forEach((s) =>
+      s.classList.toggle("hidden", s.dataset.sec !== sec));
+  };
+  if (snav) snav.addEventListener("click", (e) => {
+    const b = e.target.closest(".snav"); if (b) showSection(b.dataset.sec);
+  });
+  // "Show the guide" button (General section)
+  el("show-guide-btn").addEventListener("click", () => {
+    closeSettings();
+    el("guide-overlay").classList.remove("hidden");
+  });
 
   // --- Guide dialog (?) + first-run tour ---
   const gOverlay = el("guide-overlay");
@@ -500,6 +539,8 @@ function wireEvents() {
     try { localStorage.setItem("nl_guide_seen", "1"); } catch (_) {}
   };
   el("guide-btn").addEventListener("click", openGuide);
+  const lg = el("link-guide");
+  if (lg) lg.addEventListener("click", () => { closeSettings(); openGuide(); });
   el("guide-close").addEventListener("click", closeGuide);
   el("guide-ok").addEventListener("click", closeGuide);
   gOverlay.addEventListener("click", (e) => { if (e.target === gOverlay) closeGuide(); });
@@ -605,26 +646,73 @@ function wireEvents() {
   };
   el("update-btn2").addEventListener("click", doUpdate);
 
+  // NineLives self-update (NetSeer-style). "Check for updates" probes; if one
+  // exists an "Update now" button appears and installs immediately when clicked —
+  // no extra confirm dialog (the click IS the go-ahead). An available update also
+  // lights the cog's update-dot and the Updates tab's "New" badge.
   const appBtn = el("app-update-btn");
-  if (appBtn) appBtn.addEventListener("click", async () => {
-    el("app-update-msg").textContent = "checking…";
-    const r = await api().check_self_update();
-    if (r.error) { el("app-update-msg").textContent = r.error; return; }
+  const appNow = el("app-update-now");
+  const setStatus = (text, cls) => {
+    const m = el("app-update-msg");
+    m.className = "update-status" + (cls ? " " + cls : "");
+    m.textContent = text;
+  };
+  const flagUpdate = (on) => {
+    el("update-dot").classList.toggle("hidden", !on);
+    el("updates-badge").classList.toggle("hidden", !on);
+  };
+  const startSelfUpdate = async (latest) => {
+    appNow.disabled = true;
+    appNow.textContent = `installing v${latest}…`;
+    setStatus("Downloading and installing — the app will close to run the installer and reopen.", "new");
+    out(`\n[app-update] updating to v${latest}…\n`, "cmd");
+    await api().install_self_update();
+  };
+  // The actual check, reused by the button and the on-open auto-check.
+  const runSelfCheck = async (quiet) => {
+    appNow.classList.add("hidden");
+    if (!quiet) setStatus("checking…");
+    let r;
+    try { r = await api().check_self_update(); }
+    catch (e) { if (!quiet) setStatus("Couldn't reach GitHub.", "bad"); return; }
+    try { localStorage.setItem("nl_update_checked", String(Date.now())); } catch (_) {}
+    if (r.error) { if (!quiet) setStatus(r.error, "bad"); return; }
     if (!r.available) {
-      el("app-update-msg").textContent = `Up to date (v${r.current}).`; return;
-    }
-    if (S.hosted) {
-      el("app-update-msg").innerHTML =
-        `v${esc(r.latest)} available — <a href="${esc(r.url)}" target="_blank">download from Releases</a>.`;
+      flagUpdate(false);
+      if (!quiet) setStatus(`You're up to date (v${r.current}).`, "good");
       return;
     }
-    if (await uiConfirm(`NineLives v${r.latest} is available (you have v${r.current}).\n\n`
-                + "Download and install now? The app will close to run the installer.", "Update")) {
-      el("app-update-msg").textContent = `installing v${r.latest}…`;
-      out(`\n[app-update] updating to v${r.latest}…\n`, "cmd");
-      await api().install_self_update();
+    flagUpdate(true);
+    if (S.hosted) {
+      el("app-update-msg").className = "update-status new";
+      el("app-update-msg").innerHTML =
+        `v${esc(r.latest)} available — <a href="${esc(r.url)}" target="_blank" rel="noopener">download from Releases</a>.`;
+      return;
     }
-  });
+    setStatus(`v${r.latest} is available (you have v${r.current}).`, "new");
+    appNow.textContent = `Update now to v${r.latest}`;
+    appNow.disabled = false;
+    appNow.classList.remove("hidden");
+    appNow.onclick = () => startSelfUpdate(r.latest);
+  };
+  if (appBtn) appBtn.addEventListener("click", () => runSelfCheck(false));
+
+  // "Check when NineLives opens" preference (localStorage; default on).
+  const auto = el("updates-auto");
+  let autoOn = true;
+  try { autoOn = localStorage.getItem("nl_update_auto") !== "0"; } catch (_) {}
+  if (auto) {
+    auto.checked = autoOn;
+    auto.addEventListener("change", () => {
+      try { localStorage.setItem("nl_update_auto", auto.checked ? "1" : "0"); } catch (_) {}
+    });
+  }
+  // On open: silently check at most once a day, to light the badge/dot.
+  if (autoOn && !S.hosted) {
+    let last = 0;
+    try { last = Number(localStorage.getItem("nl_update_checked")) || 0; } catch (_) {}
+    if (Date.now() - last > 86400000) runSelfCheck(true);
+  }
 }
 async function rescan() {
   const r = await api().set_seclists(el("seclists").value.trim());
