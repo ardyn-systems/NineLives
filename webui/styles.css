@@ -301,3 +301,28 @@ input:focus, select:focus { border-color:var(--accent); outline:none; }
   padding:.05rem .3rem; border-radius:4px; background:color-mix(in srgb,var(--line) 60%,transparent); }
 .guide-demo-note { margin:.2rem 0 0; font-size:13px; color:var(--muted);
   border-left:3px solid var(--accent); padding:.3rem 0 .3rem .7rem; line-height:1.5; }
+
+/* Settings menu (sectioned: left nav + content) */
+.settings-menu { max-width:720px; }
+.settings-layout { display:grid; grid-template-columns:160px 1fr; min-height:340px; }
+.settings-nav { display:flex; flex-direction:column; gap:.15rem; padding:.8rem .6rem;
+  border-right:1px solid var(--line); }
+.settings-nav .snav { appearance:none; text-align:left; cursor:pointer;
+  background:transparent; color:var(--muted); border:none; border-radius:8px;
+  padding:.5rem .7rem; font-size:13.5px; font-weight:600; }
+.settings-nav .snav:hover { background:color-mix(in srgb,var(--line) 45%,transparent); color:var(--fg); }
+.settings-nav .snav.active { background:color-mix(in srgb,var(--accent) 18%,transparent);
+  color:var(--fg); box-shadow:inset 3px 0 0 var(--accent); }
+.settings-content { padding:1rem 1.1rem 1.2rem; display:flex; flex-direction:column; gap:1.1rem;
+  overflow:auto; }
+.setting-block { display:flex; flex-direction:column; gap:.55rem; }
+.setting-block + .setting-block { padding-top:1rem; border-top:1px solid var(--line); }
+.setting-block h3 { margin:0; font-size:1rem; }
+.about-links { flex-wrap:wrap; gap:.5rem; }
+.about-links .btn { text-decoration:none; }
+@media (max-width:620px) {
+  .settings-layout { grid-template-columns:1fr; }
+  .settings-nav { flex-direction:row; flex-wrap:wrap; border-right:none;
+    border-bottom:1px solid var(--line); }
+  .settings-nav .snav.active { box-shadow:inset 0 -3px 0 var(--accent); }
+}

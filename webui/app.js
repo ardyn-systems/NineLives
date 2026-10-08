@@ -122,6 +122,9 @@ async function _bootBody() {
   el("hc-info").textContent = init.hashcat.present
     ? `Found: ${init.hashcat.version}` : "Not installed yet.";
   if (el("app-version")) el("app-version").textContent = init.app_version || "—";
+  if (el("app-version-about")) el("app-version-about").textContent = init.app_version || "—";
+  if (el("hc-version-about")) el("hc-version-about").textContent =
+    init.hashcat.present ? (init.hashcat.version || "?") : "not installed";
   await selectAttack(0);
   wireEvents();
   if (S.hosted) applyHostedMode();
@@ -491,6 +494,14 @@ function wireEvents() {
   el("settings-btn").addEventListener("click", openSettings);
   el("settings-close").addEventListener("click", closeSettings);
   sOverlay.addEventListener("click", (e) => { if (e.target === sOverlay) closeSettings(); });
+  // Section nav (Updates / Wordlists / About)
+  const snav = el("settings-nav");
+  if (snav) snav.addEventListener("click", (e) => {
+    const b = e.target.closest(".snav"); if (!b) return;
+    snav.querySelectorAll(".snav").forEach((x) => x.classList.toggle("active", x === b));
+    sOverlay.querySelectorAll(".ssec").forEach((s) =>
+      s.classList.toggle("hidden", s.dataset.sec !== b.dataset.sec));
+  });
 
   // --- Guide dialog (?) + first-run tour ---
   const gOverlay = el("guide-overlay");
@@ -500,6 +511,8 @@ function wireEvents() {
     try { localStorage.setItem("nl_guide_seen", "1"); } catch (_) {}
   };
   el("guide-btn").addEventListener("click", openGuide);
+  const lg = el("link-guide");
+  if (lg) lg.addEventListener("click", () => { closeSettings(); openGuide(); });
   el("guide-close").addEventListener("click", closeGuide);
   el("guide-ok").addEventListener("click", closeGuide);
   gOverlay.addEventListener("click", (e) => { if (e.target === gOverlay) closeGuide(); });
@@ -605,25 +618,38 @@ function wireEvents() {
   };
   el("update-btn2").addEventListener("click", doUpdate);
 
+  // NineLives self-update. "Check for updates" probes; if one exists an
+  // "Update now" button appears and installs immediately when clicked — no extra
+  // confirm dialog (the click IS the go-ahead).
   const appBtn = el("app-update-btn");
+  const appNow = el("app-update-now");
+  const startSelfUpdate = async (latest) => {
+    appNow.disabled = true;
+    appNow.textContent = `installing v${latest}…`;
+    el("app-update-msg").textContent =
+      "Downloading and installing — the app will close to run the installer.";
+    out(`\n[app-update] updating to v${latest}…\n`, "cmd");
+    await api().install_self_update();
+  };
   if (appBtn) appBtn.addEventListener("click", async () => {
+    appNow.classList.add("hidden");
     el("app-update-msg").textContent = "checking…";
     const r = await api().check_self_update();
     if (r.error) { el("app-update-msg").textContent = r.error; return; }
     if (!r.available) {
-      el("app-update-msg").textContent = `Up to date (v${r.current}).`; return;
+      el("app-update-msg").textContent = `You're up to date (v${r.current}).`; return;
     }
     if (S.hosted) {
       el("app-update-msg").innerHTML =
-        `v${esc(r.latest)} available — <a href="${esc(r.url)}" target="_blank">download from Releases</a>.`;
+        `v${esc(r.latest)} available — <a href="${esc(r.url)}" target="_blank" rel="noopener">download from Releases</a>.`;
       return;
     }
-    if (await uiConfirm(`NineLives v${r.latest} is available (you have v${r.current}).\n\n`
-                + "Download and install now? The app will close to run the installer.", "Update")) {
-      el("app-update-msg").textContent = `installing v${r.latest}…`;
-      out(`\n[app-update] updating to v${r.latest}…\n`, "cmd");
-      await api().install_self_update();
-    }
+    el("app-update-msg").textContent =
+      `v${r.latest} is available (you have v${r.current}).`;
+    appNow.textContent = `Update now to v${r.latest}`;
+    appNow.disabled = false;
+    appNow.classList.remove("hidden");
+    appNow.onclick = () => startSelfUpdate(r.latest);
   });
 }
 async function rescan() {

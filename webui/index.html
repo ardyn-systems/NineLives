@@ -131,46 +131,79 @@
 
   </div>
 
-  <!-- ===== Settings dialog (opened by the cog) ===== -->
+  <!-- ===== Settings dialog (opened by the cog): sectioned menu ===== -->
   <div id="settings-overlay" class="overlay hidden">
-    <div class="settings-panel">
+    <div class="settings-panel settings-menu">
       <div class="settings-head">
         <h2>Settings</h2>
         <button class="icon-btn" id="settings-close" title="Close" aria-label="Close settings">
           <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.8" fill="none"/></svg>
         </button>
       </div>
-      <div class="settings-body">
-        <div class="card">
-          <h2>Wordlists</h2>
-          <p class="sub">Installed builds ship a small starter set. Download bigger
-            lists below, or point at your own SecLists folder — all of them feed
-            the dropdowns.</p>
-          <div class="row">
-            <label class="field grow">SecLists / wordlists folder
-              <input type="text" id="seclists" placeholder="paste the full path to your SecLists folder (optional)">
-            </label>
-            <button class="btn" id="rescan-btn" style="align-self:flex-end">Use folder</button>
-          </div>
-          <p class="hint" id="wl-count"></p>
-          <div id="wl-downloads" class="wl-downloads"></div>
-        </div>
-        <div class="card">
-          <h2>hashcat</h2>
-          <p class="sub">Bundled with installed builds and auto-updated from hashcat's releases.</p>
-          <p class="hint" id="hc-info"></p>
-          <div class="row">
-            <button class="btn" id="update-btn2">Check / install update</button>
-          </div>
-        </div>
-        <div class="card">
-          <h2>NineLives</h2>
-          <p class="sub">Version <span id="app-version">—</span>. Updates come from
-            the project's GitHub releases.</p>
-          <p class="hint" id="app-update-msg"></p>
-          <div class="row">
-            <button class="btn primary" id="app-update-btn">Check for updates</button>
-          </div>
+      <div class="settings-layout">
+        <nav class="settings-nav" id="settings-nav" role="tablist" aria-label="Settings sections">
+          <button class="snav active" data-sec="updates" role="tab">Updates</button>
+          <button class="snav" data-sec="wordlists" role="tab">Wordlists</button>
+          <button class="snav" data-sec="about" role="tab">About</button>
+        </nav>
+        <div class="settings-content">
+
+          <!-- Updates -->
+          <section class="ssec" data-sec="updates">
+            <div class="setting-block">
+              <h3>NineLives app</h3>
+              <p class="sub">Version <b id="app-version">—</b>. Updates come from the
+                project's GitHub releases.</p>
+              <div class="row">
+                <button class="btn" id="app-update-btn">Check for updates</button>
+                <button class="btn primary hidden" id="app-update-now">Update now</button>
+              </div>
+              <p class="hint" id="app-update-msg"></p>
+            </div>
+            <div class="setting-block">
+              <h3>hashcat engine</h3>
+              <p class="sub">Bundled with installed builds and updated from hashcat's releases.</p>
+              <p class="hint" id="hc-info"></p>
+              <div class="row">
+                <button class="btn" id="update-btn2">Check / install hashcat update</button>
+              </div>
+            </div>
+          </section>
+
+          <!-- Wordlists -->
+          <section class="ssec hidden" data-sec="wordlists">
+            <div class="setting-block">
+              <h3>Wordlists</h3>
+              <p class="sub">Installed builds ship a small starter set. Download bigger
+                lists below, or point at your own SecLists folder — all of them feed
+                the dropdowns.</p>
+              <div class="row">
+                <label class="field grow">SecLists / wordlists folder
+                  <input type="text" id="seclists" placeholder="paste the full path to your SecLists folder (optional)">
+                </label>
+                <button class="btn" id="rescan-btn" style="align-self:flex-end">Use folder</button>
+              </div>
+              <p class="hint" id="wl-count"></p>
+              <div id="wl-downloads" class="wl-downloads"></div>
+            </div>
+          </section>
+
+          <!-- About -->
+          <section class="ssec hidden" data-sec="about">
+            <div class="setting-block">
+              <h3>About NineLives</h3>
+              <p class="sub">A push-button console for <b>hashcat</b> — pick a hash or
+                capture, pick an attack, pick a wordlist, and crack. For authorized
+                password auditing only.</p>
+              <p class="hint">Version <b id="app-version-about">—</b> · hashcat <b id="hc-version-about">—</b></p>
+              <div class="row about-links">
+                <a class="btn ghost small" id="link-guide">Open the guide</a>
+                <a class="btn ghost small" href="https://github.com/ardyn-systems/NineLives/releases" target="_blank" rel="noopener">Releases</a>
+                <a class="btn ghost small" href="https://github.com/ardyn-systems/NineLives" target="_blank" rel="noopener">Project on GitHub</a>
+              </div>
+            </div>
+          </section>
+
         </div>
       </div>
     </div>
