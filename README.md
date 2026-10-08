@@ -19,11 +19,18 @@ click Run.
 Any UI change updates the guide + screenshots in the same PR
 (`python docs/screenshots.py`).
 
+> **Migration in progress — Python → Electron.** NineLives is being rewritten
+> on Electron with a Node backend (see [`electron/`](electron/README.md)). The
+> **shipping release is still this Python build** (pywebview + a local server);
+> the Electron build is feature-complete and in testing and will take over at
+> cutover. This README and the user guide describe the current shipping app;
+> they'll be updated for Electron when it becomes the release.
+
 ## Design goals (and how they're met)
 
 | Goal | How |
 |------|-----|
-| One codebase → Windows **and** Ubuntu builds | Python + Tkinter; per-OS PyInstaller bundles |
+| One codebase → Windows **and** Ubuntu builds | Python + a web UI in a pywebview window; per-OS PyInstaller bundles |
 | Bundles hashcat, **updates when hashcat updates** | `updater.py` checks hashcat's releases and installs into `vendor/` |
 | Options stay current automatically | `hashcat_iface.py` parses `hashcat --help` for the live hash-mode catalog (cached, with a static fallback) |
 | SecLists from **dropdowns**, no uploading | `wordlists.py` indexes the bundled starter set, on-demand downloads, and your own SecLists folder |
