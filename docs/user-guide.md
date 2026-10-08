@@ -125,32 +125,31 @@ left-hand menu of sections: **General**, **Wordlists**, **Integrations**,
 
 NineLives can also run as a web server for an **explore + extract** deployment
 (import a capture, download the `.hc22000`) — cracking stays in the desktop app.
-See [hosting.md](hosting.md).
+The desktop app is Electron; the hosted web server is a small Python service. See
+[hosting.md](hosting.md).
 
 ## Troubleshooting
 
-If NineLives won't start or hangs, open the startup log — its last line shows
-where it stopped:
+NineLives is an **Electron** app (Chromium + a Node backend). It records its
+boot steps to a startup log — the last line shows where it stopped:
 
 - **Windows:** `%LOCALAPPDATA%\NineLives\startup.log`
 - **Linux:** `~/.local/share/NineLives/startup.log`
 
-A healthy launch starts the local server (`desktop: serving http://127.0.0.1:…`),
-shows the window (`window shown (WebView2 ready)`, `page loaded`), and boots the
-page (`js: boot: done`). If the window line never arrives and a `WARN window not
-shown after 25s` line follows, the embedded browser (WebView2) stalled — NineLives
-then **falls back to opening in your default browser**, so it still runs. The
-companion `pywebview.log` records the browser's own startup steps. A first launch
-right after installing can be slow while the OS finishes indexing the new files;
-if it still won't open on later launches, send both logs.
+A healthy launch ends with `js: boot: done`. If it never gets there, the log's
+last line points at the step that stalled — include it when you report a problem.
+A first launch right after installing can be slow while the OS finishes indexing
+the new files; if it still won't open on later launches, send the log.
 
-(NineLives now talks to its backend over a local HTTP server instead of an
-in-window bridge, so the old "stuck on Starting…" state can't happen — the page
-isn't shown until the server is answering.)
+That same `NineLives` folder holds your writable runtime data — settings, the
+potfile, extracted captures, downloaded wordlists, and hashcat updates — kept out
+of the install directory so nothing needs admin rights.
 
-That same `NineLives` folder holds your settings, potfile, extracted captures,
-and the WebView2 browser data (it's kept out of the install directory so nothing
-needs admin rights).
+Cracks run from a `hcwork` subfolder there, which links in hashcat's read-only
+shared folders (`OpenCL`, `modules`, `rules`, …) and holds its compiled-kernel
+cache — hashcat resolves those relative to its working directory, so running it
+from the read-only install dir would make a crack exit immediately with
+`./OpenCL/: No such file or directory`.
 
 ## Authorized use
 

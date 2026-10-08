@@ -1,12 +1,13 @@
 # Hosting NineLives
 
-NineLives runs two ways from one codebase:
+NineLives has two faces that share one web UI (`webui/`):
 
-- **Desktop app** (default) — the full console, **including cracking**, in a
-  pywebview window with bundled hashcat. This is the normal way to use it.
-- **Hosted server** — the same web UI served over HTTP for an
-  **explore + extract** deployment: browse the interface, import a capture to
-  pull its WPA/WPA2 hashes, and **download the `.hc22000`** to crack locally.
+- **Desktop app** (default) — the full console, **including cracking**, as an
+  **Electron** app (Chromium + a Node backend) with bundled hashcat. This is the
+  normal way to use it, from the [Releases](https://github.com/ardyn-systems/NineLives/releases) page.
+- **Hosted server** — the same UI served over HTTP by a small **Python** service
+  for an **explore + extract** deployment: browse the interface, import a capture
+  to pull its WPA/WPA2 hashes, and **download the `.hc22000`** to crack locally.
 
 > **Cracking is intentionally disabled when hosted.** There's no server-side
 > hashcat and no GPU, and a public crack endpoint would be an abuse risk. The
