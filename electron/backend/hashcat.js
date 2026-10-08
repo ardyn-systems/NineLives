@@ -175,21 +175,22 @@ function version(p) {
 }
 
 const MODE_ROW = /^\s*(\d+)\s*\|\s*(.+?)\s*\|\s*(.+?)\s*$/;
+// hashcat 6 listed modes in `--help` under "[ Hash modes ]"; hashcat 7 moved the
+// full table to `-hh` under "[ Hash Modes ]" (capital M). Match either, then
+// read "<id> | <name> | <category>" rows until the next "- [ … ]" section.
 function parseHashModesText(stdout) {
   if (!stdout) return [];
   const modes = [];
   let inSection = false;
   for (const line of stdout.split(/\r?\n/)) {
-    if (line.includes("[ Hash modes ]")) {
-      inSection = true;
+    if (!inSection) {
+      if (line.toLowerCase().includes("[ hash modes ]")) inSection = true;
       continue;
     }
-    if (inSection) {
-      if (line.trim().startsWith("- [") && !line.includes("Hash modes")) break;
-      const m = MODE_ROW.exec(line);
-      if (m && m[2].toLowerCase() !== "name") {
-        modes.push({ id: parseInt(m[1], 10), name: m[2].trim(), category: m[3].trim() });
-      }
+    if (line.trim().startsWith("- [")) break; // next section
+    const m = MODE_ROW.exec(line);
+    if (m && m[2].toLowerCase() !== "name") {
+      modes.push({ id: parseInt(m[1], 10), name: m[2].trim(), category: m[3].trim() });
     }
   }
   return modes;
@@ -197,7 +198,8 @@ function parseHashModesText(stdout) {
 function parseHashModes(p) {
   p = p || findHashcat();
   if (!p) return [];
-  const r = spawnSync(p, ["--help"], { cwd: hashcatWorkdir(), encoding: "utf8", timeout: 40000 });
+  // -hh emits the full hash-mode table on hashcat 7 (and still works on 6).
+  const r = spawnSync(p, ["-hh"], { cwd: hashcatWorkdir(), encoding: "utf8", timeout: 40000 });
   return parseHashModesText(r.stdout || "");
 }
 function cacheHashModes(modes) {
