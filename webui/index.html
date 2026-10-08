@@ -152,6 +152,19 @@
               <h3>Theme</h3>
               <div id="settings-themes" class="theme-grid" role="radiogroup" aria-label="Theme"></div>
             </div>
+            <div class="setting-block" id="device-block">
+              <h3>Graphics card</h3>
+              <p class="sub">Which device hashcat cracks on. <b>Automatic</b> uses every
+                device it detects — best for most setups. On a laptop with two GPUs,
+                pick the dedicated card for full speed.</p>
+              <div class="row">
+                <label class="field grow">Crack on
+                  <select id="device-select" class="select"></select>
+                </label>
+                <button class="btn" id="device-refresh" style="align-self:flex-end">Refresh</button>
+              </div>
+              <p class="hint" id="device-hint">Detecting devices…</p>
+            </div>
           </section>
 
           <!-- Wordlists -->
@@ -201,9 +214,12 @@
                 <button class="btn" id="app-update-btn">Check for updates</button>
               </div>
               <p class="update-status" id="app-update-msg" role="status" aria-live="polite"></p>
-              <div class="row"><button class="btn primary hidden" id="app-restart">Restart NineLives</button></div>
-              <label class="switch-row"><span>Update automatically<small>On startup, NineLives quietly checks GitHub and downloads a new release in the background. Then just click <b>Restart NineLives</b> to finish — no prompts. Turn this off to only check when you press the button.</small></span>
+              <label class="switch-row"><span>Check for updates when NineLives opens<small>Asks GitHub about new releases at most once a day and flags one with a dot on the cog and a <b>New</b> badge. Nothing is installed without you choosing it.</small></span>
                 <input id="updates-auto" type="checkbox" role="switch"></label>
+              <h3>Versions</h3>
+              <p class="hint">Updating or rolling back downloads that version, checks it
+                against GitHub's checksum, installs it, and reopens NineLives.</p>
+              <ol id="release-list" class="release-list"><li class="hint">Click <b>Check for updates</b> to list the versions on GitHub.</li></ol>
             </div>
             <div class="setting-block">
               <h3>hashcat engine</h3>
@@ -276,6 +292,60 @@
           <button id="tour-back" class="btn small" type="button">Back</button>
           <button id="tour-next" class="btn primary small" type="button">Next</button>
         </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Update wizard (download → checksum → install → reopen) ===== -->
+  <div id="update-overlay" class="overlay hidden">
+    <div class="settings-panel update-dialog">
+      <div class="settings-head">
+        <h2 id="upd-title">Update NineLives</h2>
+        <button class="icon-btn" id="upd-x" title="Close" aria-label="Close">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+      <div class="settings-body">
+        <p id="upd-sub" class="hint"></p>
+
+        <section class="upd-step" data-step="intro">
+          <div id="upd-notes" class="release-notes"></div>
+          <div class="row-actions end">
+            <button class="btn ghost" type="button" data-upd="close">Not now</button>
+            <button id="upd-download" class="btn primary" type="button">Download</button>
+          </div>
+        </section>
+
+        <section class="upd-step hidden" data-step="progress">
+          <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100"><div id="upd-bar"></div></div>
+          <p id="upd-progress-text" class="hint">Starting the download…</p>
+          <div class="row-actions end">
+            <button class="btn ghost" type="button" data-upd="close">Cancel</button>
+          </div>
+        </section>
+
+        <section class="upd-step hidden" data-step="ready">
+          <p class="upd-ok" id="upd-ok">Downloaded and checked against GitHub's checksum.</p>
+          <p id="upd-ready-text"></p>
+          <div class="row-actions end">
+            <button class="btn ghost" type="button" data-upd="close">Not now</button>
+            <button id="upd-install" class="btn primary" type="button">Restart and update</button>
+          </div>
+        </section>
+
+        <section class="upd-step hidden" data-step="installing">
+          <div class="progress indeterminate"><div></div></div>
+          <p id="upd-installing-text">NineLives is closing to finish the update. It will reopen by itself in a moment.</p>
+        </section>
+
+        <section class="upd-step hidden" data-step="error">
+          <p id="upd-error" class="upd-error"></p>
+          <div class="row-actions end">
+            <a id="upd-manual" class="btn ghost" target="_blank" rel="noopener">Download from GitHub</a>
+            <button class="btn ghost" type="button" data-upd="close">Close</button>
+            <button class="btn primary" type="button" data-upd="retry">Try again</button>
+          </div>
+        </section>
       </div>
     </div>
   </div>

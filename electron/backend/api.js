@@ -285,6 +285,13 @@ class Api extends EventEmitter {
         cmd.push(flag);
       }
     }
+    // Graphics-card choice from Settings, unless the user set -d/-D by hand.
+    const devSel = settings.get("device_select", "");
+    const hasDev = (p.options || []).some((o) => o.key === "--backend-devices");
+    const hasType = (p.options || []).some((o) => o.key === "--backend-device-types");
+    if (devSel === "gpu") { if (!hasType) cmd.push("-D", "2"); }
+    else if (/^\d+$/.test(devSel)) { if (!hasDev) cmd.push("-d", devSel); }
+
     if (!(p.options || []).some((o) => o.key === "--potfile-disable")) cmd.push("--potfile-path", POTFILE);
     return [cmd, null];
   }
@@ -408,26 +415,57 @@ class Api extends EventEmitter {
     return { started: true };
   }
 
+  // ---- graphics card / compute devices ----------------------------------
+  list_devices() {
+    return hashcat.listDevices();
+  }
+  get_device() {
+    return { select: settings.get("device_select", "") };
+  }
+  set_device(sel) {
+    settings.set("device_select", sel || "");
+    return { ok: true, select: sel || "" };
+  }
+
   // ---- app self-update --------------------------------------------------
   async check_self_update() {
     return await selfupdate.check();
   }
 
-  // Download the update in the background (no install yet). Resolves when the
-  // installer is staged; the UI then shows "Restart NineLives".
-  async download_self_update() {
-    const info = await selfupdate.check();
-    if (!info.available || !info.asset) return { ready: false, available: false };
+  // Every published release (newest first) + the running version, for the
+  // version list and rollback.
+  async list_self_releases() {
     try {
-      const dest = await selfupdate.download(info.asset.url, info.asset.name,
-        (m) => this._emit("hbOutput", `[app-update] ${m}\n`));
-      this._pendingUpdate = { path: dest, version: info.latest, name: info.asset.name };
-      this._emit("hbOutput", `[app-update] downloaded ${info.asset.name} — ready to install.\n`);
-      return { ready: true, version: info.latest };
+      const releases = await selfupdate.listReleases();
+      return {
+        current: APP_VERSION,
+        releases: releases.map((r) => ({
+          tag: r.tag, version: r.version, name: r.name, body: r.body,
+          url: r.url, date: r.date, prerelease: r.prerelease,
+          size: (selfupdate.platformAsset(r.assets) || {}).size || 0,
+          hasAsset: !!selfupdate.platformAsset(r.assets),
+        })),
+      };
     } catch (e) {
-      this._emit("hbOutput", `[app-update] download failed: ${e.message || e}\n`);
-      return { ready: false, error: e.message || String(e) };
+      return { current: APP_VERSION, releases: [], error: e.message || String(e) };
     }
+  }
+
+  // Download + checksum-verify a specific version in the background, streaming
+  // progress; on success it's staged and apply_self_update() installs it.
+  //   events: hbUpdateProgress(status, pct) · hbUpdateReady(tag, version, verified) · hbUpdateError(msg)
+  start_self_update(tag) {
+    (async () => {
+      try {
+        const res = await selfupdate.prepare(tag, (status, pct) =>
+          this._emit("hbUpdateProgress", status, pct));
+        this._pendingUpdate = { path: res.path, version: res.version, tag: res.tag };
+        this._emit("hbUpdateReady", res.tag, res.version, res.verified);
+      } catch (e) {
+        this._emit("hbUpdateError", e.message || String(e));
+      }
+    })();
+    return { started: true };
   }
 
   // Apply the staged update with no further input: launch the installer silently

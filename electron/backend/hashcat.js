@@ -212,7 +212,61 @@ function cacheHashModes(modes) {
   }
 }
 
+// Parse `hashcat -I` (backend info) into a flat device list. Handles the
+// CUDA / HIP / Metal / OpenCL sections and their "Backend Device ID #N" blocks.
+// CUDA/HIP/Metal devices are GPUs; OpenCL devices carry an explicit Type.
+function parseDevicesText(stdout) {
+  const devices = [];
+  let backend = "";
+  let cur = null;
+  const flush = () => { if (cur) { devices.push(cur); cur = null; } };
+  for (const raw of (stdout || "").split(/\r?\n/)) {
+    const line = raw.trimEnd();
+    const bk = line.match(/^\s*(CUDA|HIP|Metal|OpenCL)\s+Info:/i);
+    if (bk) { flush(); backend = bk[1]; continue; }
+    if (/OpenCL Platform ID #/i.test(line)) { flush(); continue; }
+    const dev = line.match(/Backend Device ID #(\d+)(?:\s*\(Alias:\s*#(\d+)\))?/i);
+    if (dev) {
+      flush();
+      cur = { id: parseInt(dev[1], 10), backend,
+        name: "", type: /opencl/i.test(backend) ? "" : "GPU",
+        alias: dev[2] ? parseInt(dev[2], 10) : null };
+      continue;
+    }
+    if (!cur) continue;
+    const nm = line.match(/^\s*Name\.*\s*:\s*(.+)$/);
+    if (nm) { cur.name = nm[1].trim(); continue; }
+    const ty = line.match(/^\s*Type\.*\s*:\s*(\w+)/);
+    if (ty) {
+      const t = ty[1].toUpperCase();
+      cur.type = t.includes("GPU") ? "GPU" : t.includes("CPU") ? "CPU" : ty[1];
+    }
+  }
+  flush();
+  // Drop OpenCL aliases of a CUDA/HIP device (same physical card, lower-id
+  // primary wins), then de-dupe by id and sort.
+  const seen = new Map();
+  for (const d of devices) {
+    if (d.alias) continue;
+    if (d.id && !seen.has(d.id)) { delete d.alias; seen.set(d.id, d); }
+  }
+  return [...seen.values()].sort((a, b) => a.id - b.id);
+}
+
+function listDevices(p) {
+  p = p || findHashcat();
+  if (!p) return { devices: [], error: "hashcat not found" };
+  try {
+    const r = spawnSync(p, ["-I"], { cwd: hashcatWorkdir(), encoding: "utf8", timeout: 30000 });
+    const out = `${r.stdout || ""}\n${r.stderr || ""}`;
+    return { devices: parseDevicesText(out) };
+  } catch (e) {
+    return { devices: [], error: e.message || String(e) };
+  }
+}
+
 module.exports = {
   findHashcat, currentVersion, loadHashModes, version, parseHashModes, parseHashModesText,
-  cacheHashModes, hashcatWorkdir, VENDOR_DIR, UPDATE_DIR, WORKDIR, CATALOG_CACHE, STATIC_HASH_MODES,
+  cacheHashModes, hashcatWorkdir, listDevices, parseDevicesText,
+  VENDOR_DIR, UPDATE_DIR, WORKDIR, CATALOG_CACHE, STATIC_HASH_MODES,
 };

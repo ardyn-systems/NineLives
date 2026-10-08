@@ -88,8 +88,14 @@ left-hand menu of sections: **General**, **Wordlists**, **Integrations**,
 
 ![The Settings dialog](images/settings.png)
 
-- **General** — **Theme**: pick any of the six themes from the swatch grid; your
-  choice is remembered.
+- **General**
+  - **Theme** — pick any of the six themes from the swatch grid; your choice is
+    remembered.
+  - **Graphics card** — choose which device hashcat cracks on. **Automatic**
+    (default) uses every device it detects, which already includes your dedicated
+    GPU. On a laptop with both an integrated and a dedicated GPU, pick the
+    dedicated card (or **All GPUs only**) for full speed. **Refresh** re-detects;
+    if only a CPU shows up, install your GPU's vendor driver.
 - **Wordlists** — installed builds ship a small **starter set**. Use **Download**
   next to a list (rockyou, xato-10M, darkc0de) to fetch the bigger lists from the
   SecLists project; they land in your data dir and appear in the dropdowns
@@ -99,13 +105,15 @@ left-hand menu of sections: **General**, **Wordlists**, **Integrations**,
 - **Integrations** — a placeholder for future companion-app features (pushing
   hashes/captures straight into NineLives).
 - **Updates**
-  - **NineLives app** — with **Update automatically** on (the default), NineLives
-    quietly checks GitHub on startup and **downloads a new release in the
-    background**, then shows a single **Restart NineLives** button. Clicking it
-    installs silently and reopens on the new version — no prompts. You can also
-    press **Check for updates** any time. Turn the toggle off to only check when
-    you press the button. An available update also lights a dot on the cog and a
-    **New** badge on the Updates tab. (In the hosted demo it links to Releases.)
+  - **NineLives app** — press **Check for updates** to list every version on
+    GitHub. Each shows **Update** (newer), **Roll back** (older, folded under
+    *Earlier versions*), or **Reinstall** (the one you have), plus **Notes**.
+    Choosing one opens a short wizard that **downloads that version, verifies it
+    against GitHub's SHA-256 checksum, installs it, and reopens NineLives** — on
+    Windows the install runs silently. **Check for updates when NineLives opens**
+    (on by default) quietly checks at most once a day and flags a new release with
+    a dot on the cog and a **New** badge; nothing installs until you choose it.
+    (In the hosted demo, the actions link to the Releases page.)
   - **hashcat engine** — check for and install hashcat updates.
 - **Help** — **Take the tour** (replays the spotlight tour), **User guide**,
   **Report a problem** (opens a GitHub issue), and **Demo** (jumps to the bundled
