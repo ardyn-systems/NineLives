@@ -535,6 +535,135 @@ window.hbDone = () => {
   finishStatus();
 };
 
+/* ---------- app self-update: version list + download/verify/install wizard ---------- */
+const UPD = { current: "", releases: [], wizardTag: null };
+function cmpVer(a, b) {
+  const na = String(a).replace(/[^0-9.]/g, "").split(".").map(Number);
+  const nb = String(b).replace(/[^0-9.]/g, "").split(".").map(Number);
+  for (let i = 0; i < Math.max(na.length, nb.length); i++) {
+    const x = na[i] || 0, y = nb[i] || 0; if (x !== y) return x > y ? 1 : -1;
+  }
+  return 0;
+}
+function fmtSize(n) {
+  if (!n) return "";
+  const mb = n / 1048576;
+  return mb >= 1 ? `${mb.toFixed(mb < 10 ? 1 : 0)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`;
+}
+function fmtDate(s) {
+  const t = Date.parse(s);
+  return t ? new Date(t).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "";
+}
+function updSetStatus(text, cls) {
+  const m = el("app-update-msg");
+  m.className = "update-status" + (cls ? ` ${cls}` : "");
+  m.textContent = text;
+}
+function updFlag(on) {
+  el("update-dot").classList.toggle("hidden", !on);
+  el("updates-badge").classList.toggle("hidden", !on);
+}
+async function checkForUpdates(quiet) {
+  if (!quiet) updSetStatus("Checking GitHub…");
+  let r;
+  try { r = await api().list_self_releases(); }
+  catch (e) { if (!quiet) updSetStatus("Couldn't reach GitHub.", "bad"); return; }
+  if (r.error && !(r.releases || []).length) { if (!quiet) updSetStatus(r.error, "bad"); return; }
+  UPD.current = r.current; UPD.releases = r.releases || [];
+  try { localStorage.setItem("nl_update_checked", String(Date.now())); } catch (_) {}
+  const newer = UPD.releases.filter((x) => cmpVer(x.version, UPD.current) > 0 && !x.prerelease);
+  updFlag(newer.length > 0);
+  if (newer.length) updSetStatus(`${newer[0].name || `v${newer[0].version}`} is available. You have v${UPD.current}.`, "new");
+  else if (UPD.releases.length) updSetStatus(`You have the newest version (v${UPD.current}).`, "good");
+  else updSetStatus("No releases found on GitHub.");
+  renderReleaseList();
+}
+function releaseActions(r) {
+  const cmp = cmpVer(r.version, UPD.current);
+  const verb = cmp > 0 ? "Update" : cmp < 0 ? "Roll back" : "Reinstall";
+  let html = `<a class="btn small ghost" href="${esc(r.url)}" target="_blank" rel="noopener">Notes</a>`;
+  if (r.hasAsset && !S.hosted) html += `<button class="btn small${cmp > 0 ? " primary" : ""}" type="button" data-update="${esc(r.tag)}">${verb}</button>`;
+  else if (r.hasAsset) html += `<a class="btn small${cmp > 0 ? " primary" : ""}" href="${esc(r.url)}" target="_blank" rel="noopener">${verb}</a>`;
+  return html;
+}
+function releaseMeta(r) {
+  return esc([fmtDate(r.date), fmtSize(r.size)].filter(Boolean).join(" · "));
+}
+function renderReleaseList() {
+  const list = el("release-list");
+  const all = UPD.releases.slice(0, 40);
+  const older = all.filter((r) => cmpVer(r.version, UPD.current) < 0);
+  let html = "";
+  for (const r of all.filter((x) => !older.includes(x))) {
+    const cmp = cmpVer(r.version, UPD.current);
+    const tag = cmp === 0 ? '<span class="release-tag">Current</span>' : '<span class="release-tag newer">Newer</span>';
+    html += `<li class="${cmp === 0 ? "current" : ""}"><span><span class="release-name">${esc(r.name || `v${r.version}`)}</span>${tag}`
+      + `<span class="release-meta">${releaseMeta(r)}</span></span><span class="release-actions">${releaseActions(r)}</span></li>`;
+  }
+  if (older.length) {
+    const picked = older[0];
+    html += `<li class="release-older"><details><summary><span class="release-name">Earlier versions</span>`
+      + `<span class="release-tag">${older.length}</span><span class="release-meta">Only needed to roll back</span></summary>`
+      + `<div class="release-pick"><select id="release-older" aria-label="Earlier version">`
+      + older.map((r, i) => `<option value="${esc(r.tag)}"${i === 0 ? " selected" : ""}>${esc(r.name || `v${r.version}`)}${fmtDate(r.date) ? ` · ${esc(fmtDate(r.date))}` : ""}</option>`).join("")
+      + `</select><span class="release-actions" id="release-older-actions">${releaseActions(picked)}</span></div></details></li>`;
+  }
+  list.innerHTML = html || '<li class="hint">No releases yet.</li>';
+  const olderSel = el("release-older");
+  if (olderSel) olderSel.addEventListener("change", (e) => {
+    const r = UPD.releases.find((x) => x.tag === e.target.value);
+    if (r) el("release-older-actions").innerHTML = releaseActions(r);
+  });
+}
+// Wizard
+function updStep(name) {
+  document.querySelectorAll("#update-overlay .upd-step").forEach((s) =>
+    s.classList.toggle("hidden", s.dataset.step !== name));
+}
+function openUpdateWizard(r) {
+  UPD.wizardTag = r.tag;
+  const cmp = cmpVer(r.version, UPD.current);
+  const name = r.name || `v${r.version}`;
+  el("upd-title").textContent = cmp > 0 ? `Update to ${name}` : cmp < 0 ? `Go back to ${name}` : `Reinstall ${name}`;
+  el("upd-sub").textContent = `You have v${UPD.current}.` + (r.size ? ` The download is ${fmtSize(r.size)}.` : "");
+  el("upd-notes").textContent = (r.body || "").trim() || "No release notes.";
+  el("upd-manual").href = r.url;
+  el("upd-download").textContent = cmp > 0 ? "Download update" : cmp < 0 ? "Download this version" : "Download again";
+  el("upd-install").disabled = false;
+  updStep("intro");
+  el("update-overlay").classList.remove("hidden");
+}
+function startUpdDownload() {
+  updStep("progress");
+  el("upd-bar").style.width = "0%";
+  el("upd-progress-text").textContent = "Starting the download…";
+  api().start_self_update(UPD.wizardTag);
+}
+window.hbUpdateProgress = (status, pct) => {
+  if (el("update-overlay").classList.contains("hidden")) return;
+  el("upd-bar").style.width = `${status === "verifying" ? 100 : (pct || 0)}%`;
+  el("upd-progress-text").textContent = status === "verifying"
+    ? "Checking the download against GitHub's checksum…" : `Downloading… ${pct || 0}%`;
+};
+window.hbUpdateReady = (tag, version, verified) => {
+  el("upd-ok").textContent = verified
+    ? "Downloaded and checked against GitHub's checksum."
+    : "Downloaded. (No checksum was published for this release.)";
+  el("upd-ready-text").textContent = "NineLives will close, install it, and reopen by itself.";
+  updStep("ready");
+  el("upd-install").focus();
+};
+window.hbUpdateError = (msg) => {
+  el("upd-error").textContent = msg || "Something went wrong.";
+  updStep("error");
+};
+function installUpd() {
+  el("upd-install").disabled = true;
+  updStep("installing");
+  out("\n[app-update] installing; NineLives will restart…\n", "cmd");
+  api().apply_self_update();
+}
+
 /* ---------- plain-language crack status (parses hashcat's --status output) ---------- */
 let _crack = null;
 function startStatus() {
@@ -757,69 +886,32 @@ function wireEvents() {
   };
   el("update-btn2").addEventListener("click", doUpdate);
 
-  // NineLives self-update (NetSeer-style, no prompts). A check — the on-startup
-  // auto-check, or the button — finds a release, downloads it in the background,
-  // then reveals a "Restart NineLives" button, the only action needed. The
-  // install is silent (NSIS /S). An available update also lights the cog's
-  // update-dot and the Updates tab's "New" badge.
-  const appBtn = el("app-update-btn");
-  const appRestart = el("app-restart");
-  const setStatus = (text, cls) => {
-    const m = el("app-update-msg");
-    m.className = "update-status" + (cls ? " " + cls : "");
-    m.textContent = text;
-  };
-  const flagUpdate = (on) => {
-    el("update-dot").classList.toggle("hidden", !on);
-    el("updates-badge").classList.toggle("hidden", !on);
-  };
-  let restartWired = false;
-  const armRestart = (version) => {
-    flagUpdate(true);
-    setStatus(`NineLives v${version} is ready to install.`, "new");
-    appRestart.classList.remove("hidden");
-    if (!restartWired) {
-      restartWired = true;
-      appRestart.addEventListener("click", () => {
-        appRestart.disabled = true;
-        setStatus("Installing — NineLives will close and reopen on the new version.", "new");
-        out("\n[app-update] restarting to install…\n", "cmd");
-        api().apply_self_update();
-      });
+  // NineLives self-update (NetSeer-style). "Check for updates" lists the GitHub
+  // releases; Update / Roll back / Reinstall opens the wizard, which downloads,
+  // verifies the SHA-256 checksum, installs, and reopens. The "check on open"
+  // toggle only flags an update (cog dot + Updates "New" badge).
+  el("app-update-btn").addEventListener("click", () => checkForUpdates(false));
+  el("release-list").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-update]");
+    if (!b) return;
+    const r = UPD.releases.find((x) => x.tag === b.dataset.update);
+    if (r) openUpdateWizard(r);
+  });
+  el("upd-download").addEventListener("click", startUpdDownload);
+  el("upd-install").addEventListener("click", installUpd);
+  el("upd-x").addEventListener("click", () => el("update-overlay").classList.add("hidden"));
+  const updOverlay = el("update-overlay");
+  updOverlay.addEventListener("click", (e) => {
+    if (e.target === updOverlay) updOverlay.classList.add("hidden");
+    const act = e.target.closest("[data-upd]")?.dataset.upd;
+    if (act === "close") updOverlay.classList.add("hidden");
+    else if (act === "retry") {
+      const r = UPD.releases.find((x) => x.tag === UPD.wizardTag);
+      if (r) openUpdateWizard(r);
     }
-  };
-  // Check, then (desktop) download in the background. quiet = startup auto-run.
-  const runSelfCheck = async (quiet) => {
-    appRestart.classList.add("hidden");
-    if (!quiet) setStatus("checking…");
-    let r;
-    try { r = await api().check_self_update(); }
-    catch (e) { if (!quiet) setStatus("Couldn't reach GitHub.", "bad"); return; }
-    try { localStorage.setItem("nl_update_checked", String(Date.now())); } catch (_) {}
-    if (r.error) { if (!quiet) setStatus(r.error, "bad"); return; }
-    if (!r.available) {
-      flagUpdate(false);
-      if (!quiet) setStatus(`You're up to date (v${r.current}).`, "good");
-      return;
-    }
-    flagUpdate(true);
-    if (S.hosted) {
-      el("app-update-msg").className = "update-status new";
-      el("app-update-msg").innerHTML =
-        `v${esc(r.latest)} available — <a href="${esc(r.url)}" target="_blank" rel="noopener">download from Releases</a>.`;
-      return;
-    }
-    // Desktop: download now (no prompt), then offer Restart.
-    setStatus(`Downloading NineLives v${r.latest} in the background…`, "new");
-    let d;
-    try { d = await api().download_self_update(); }
-    catch (e) { setStatus("Update download failed — try again later.", "bad"); return; }
-    if (d && d.ready) armRestart(d.version || r.latest);
-    else setStatus((d && d.error) || "Update download failed — try again later.", "bad");
-  };
-  if (appBtn) appBtn.addEventListener("click", () => runSelfCheck(false));
+  });
 
-  // "Update automatically" preference (localStorage; default on).
+  // "Check for updates when NineLives opens" preference (localStorage; default on).
   const auto = el("updates-auto");
   let autoOn = true;
   try { autoOn = localStorage.getItem("nl_update_auto") !== "0"; } catch (_) {}
@@ -829,12 +921,11 @@ function wireEvents() {
       try { localStorage.setItem("nl_update_auto", auto.checked ? "1" : "0"); } catch (_) {}
     });
   }
-  // On startup: if auto is on, check + download in the background (at most once a
-  // day) so all that's left for the user is the Restart button.
+  // On startup: if auto is on, check (no download) at most once a day to flag an update.
   if (autoOn && !S.hosted) {
     let last = 0;
     try { last = Number(localStorage.getItem("nl_update_checked")) || 0; } catch (_) {}
-    if (Date.now() - last > 86400000) runSelfCheck(true);
+    if (Date.now() - last > 86400000) checkForUpdates(true);
   }
 }
 async function rescan() {
