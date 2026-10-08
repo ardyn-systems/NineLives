@@ -17,79 +17,87 @@ click Run.
 Any UI change updates the guide + screenshots in the same PR
 (`python docs/screenshots.py`).
 
-> **NineLives is an Electron app** (Chromium + a Node backend) as of v1.0.0 —
-> see [`electron/`](electron/README.md). Releases on the
-> [Releases page](https://github.com/ardyn-systems/NineLives/releases) are the
-> Electron installers (Windows NSIS `.exe`, Linux AppImage), and they ship a
-> **bundled example** (a sample WPA capture + a demo wordlist) so a fresh install
-> cracks out of the box. The original Python build (pywebview + a local server)
-> is kept in this repo for reference but is no longer shipped; the sections below
-> that reference `ninelives.py`/`api.py` describe that archived build.
+> **The desktop app is an Electron app** (Chromium + a Node backend) as of
+> v1.0.0 — see [`electron/`](electron/README.md). Releases are the Electron
+> installers (Windows NSIS `.exe`, Linux AppImage), and they ship a **bundled
+> example** (a sample WPA capture + a demo wordlist) so a fresh install cracks out
+> of the box. The repo also keeps the original **Python** code: it no longer
+> builds the desktop app, but it still powers the **hosted** web deployment
+> (`ninelives.py --host`, see [Hosted / server mode](#hosted--server-mode)).
 
 ## Design goals (and how they're met)
 
 | Goal | How |
 |------|-----|
-| One codebase → Windows **and** Ubuntu builds | Python + a web UI in a pywebview window; per-OS PyInstaller bundles |
-| Bundles hashcat, **updates when hashcat updates** | `updater.py` checks hashcat's releases and installs into `vendor/` |
-| Options stay current automatically | `hashcat_iface.py` parses `hashcat --help` for the live hash-mode catalog (cached, with a static fallback) |
-| SecLists from **dropdowns**, no uploading | `wordlists.py` indexes the bundled starter set, on-demand downloads, and your own SecLists folder |
-| **Suggested wordlists** per hash type | `wordlists.Catalog.suggest()` maps the hash family → best-first lists (★ in the dropdown) |
-| **Every option explained** | `compat.py` carries plain-English descriptions + examples (shown inline and on hover) |
-| **Stackable options, no guessing** | `compat.py` encodes the attack-mode → compatible-option matrix; the UI shows only options that legally combine with the chosen `-a` mode |
+| One codebase → Windows **and** Ubuntu builds | Electron + a Node backend; `electron-builder` makes the NSIS installer and the AppImage |
+| Bundles hashcat, **updates when hashcat updates** | `electron/backend/updater.js` checks hashcat's releases and installs into `vendor/` |
+| Options stay current automatically | `electron/backend/hashcat.js` parses `hashcat -hh` for the live hash-mode catalog (cached, with a static fallback) |
+| SecLists from **dropdowns**, no uploading | `electron/backend/wordlists.js` indexes the bundled starter set, on-demand downloads, and your own SecLists folder |
+| **Suggested wordlists** per hash type | the wordlist catalog maps the hash family → best-first lists (★ in the dropdown) |
+| **Every option explained** | `electron/backend/compat.js` carries plain-language labels + descriptions (shown inline and on hover) |
+| **Stackable options, no guessing** | `electron/backend/compat.js` encodes the attack-mode → compatible-option matrix; the UI shows only options that legally combine with the chosen `-a` mode |
+| **Updates itself**, safely | `electron/backend/selfupdate.js` lists GitHub releases and installs a chosen version after verifying its SHA-256 checksum |
 
 ## Modules
 
+**Desktop app (Electron):**
+
 ```
-ninelives.py       launcher: starts the local server and shows it in a window
-server.py          HTTP server + /api/* dispatch and the event stream
-webui/             NetSeer-styled front-end — index.html, styles.css, app.js
-api.py             the backend the server calls (crack, extract, catalog, …)
-hashcat_iface.py   locate/run hashcat; parse --help → live hash catalog
-compat.py          attack-mode ↔ stackable-option matrix + explanations
-wordlists.py       SecLists catalog (bundled + downloaded + your own) + suggestions
-wordlist_dl.py     on-demand wordlist downloads (rockyou etc.) into the data dir
-updater.py         check/install hashcat releases into vendor/
-themes.py          NetSeer theme tokens (terrain/midnight/daylight/blueprint)
-settings.py        shared JSON settings
-cracker.py         optional pure-Python WPA engine (works with no hashcat)
+electron/main.js      Electron main: window + IPC (nl-invoke) and event push (nl-event)
+electron/preload.js   exposes nlapi.invoke / nlapi.onEvent to the page
+electron/backend/     the Node backend the UI calls:
+  api.js              crack, extract, catalog, settings, updates, device list
+  hashcat.js          locate/run hashcat; parse -hh → live hash catalog; hashcat -I devices
+  compat.js           attack-mode ↔ stackable-option matrix + plain-language labels
+  wordlists.js        SecLists catalog (bundled + downloaded + your own) + suggestions
+  wordlist_dl.js      on-demand wordlist downloads (rockyou etc.)
+  updater.js          check/install hashcat releases into vendor/
+  selfupdate.js       in-app NineLives updater (GitHub releases, checksum-verified)
+  captures.js         extract WPA/WPA2 PMKID + 4-way handshakes from pcap/cap
+  themes.js settings.js paths.js download.js   theme tokens, JSON settings, paths, HTTPS helpers
+webui/                the shared front-end — index.html, styles.css, app.js
 ```
 
-**Architecture (like NetSeer).** The desktop app runs a small HTTP server on
-`127.0.0.1` and shows it in a window (WebView2 on Windows, WebKitGTK on Linux,
-falling back to your default browser). The page talks to the backend over HTTP
-(`fetch`), and server-pushed output (live hashcat lines, catalog refresh,
-download progress) streams back over a long-poll of `/api/events`. There is no
-JS↔Python bridge, so a slow window start can't strand the UI. The same server,
-run with `--host`, is the public explore-and-extract deployment — where cracking
-and filesystem actions are disabled. `webui/styles.css` carries NetSeer's four
+**Hosted web server (Python):** `ninelives.py --host` serves `webui/` over HTTP
+for the explore + extract deployment; `server.py`, `api.py`, `compat.py`,
+`wordlists.py`, etc. are its backend — a Python mirror of the Node modules that
+shares the same `webui/`.
+
+**Architecture.** The **desktop app** is Electron: a Chromium window loads
+`webui/`, and the page calls the Node backend over Electron IPC
+(`nlapi.invoke` → `ipcMain.handle("nl-invoke")`), with server-pushed output
+(live hashcat lines, catalog refresh, download progress) streamed back on the
+`nl-event` channel. No pywebview, no local HTTP server, no JS↔Python bridge.
+
+The **hosted** deployment instead runs the Python server (`ninelives.py --host`),
+serving the same `webui/` over HTTP for explore + extract — cracking and
+filesystem actions are disabled there. `webui/styles.css` carries the six
 shipping themes as `[data-theme]` token sets (easter-egg themes excluded).
 
-Inspect the stackability matrix without the GUI:
-
-```bash
-python compat.py          # dump attack modes and their compatible options
-python hashcat_iface.py   # show the hash-mode catalog (live or fallback)
-```
+The attack-mode ↔ option matrix lives in `electron/backend/compat.js` (and its
+Python twin `compat.py`); `python compat.py` dumps it to the terminal.
 
 ## Requirements
 
-- **Python 3.8+**
-- **pywebview** (`pip install pywebview`)
-  - Windows: uses the built-in Edge **WebView2** runtime (present on Win 10/11); needs `pythonnet`
-  - Ubuntu: `sudo apt install python3-gi gir1.2-webkit2-4.1` (or `-4.0` on older releases)
-- **hashcat** — bundle it (below) or install it; the app also finds a system copy
-- For bundling/updating hashcat: `py7zr` (`pip install py7zr`) or a `7z`/`7za` CLI
+- **To use it:** nothing — download the installer/AppImage from
+  [Releases](https://github.com/ardyn-systems/NineLives/releases). hashcat and a
+  starter wordlist set are bundled.
+- **To build the desktop app:** **Node 18+** and npm.
+- **To run the hosted server / from source (Python):** **Python 3.8+** (standard
+  library only); `py7zr` or a `7z`/`7za` CLI only if you bundle/update hashcat.
 
 ## Run from source
 
+Desktop app (Electron):
+
 ```bash
-python ninelives.py
+cd electron && npm install && npm start
 ```
 
 First launch asks for authorized-use confirmation. If hashcat isn't present yet,
 the dropdowns still work offline from the static catalog; install hashcat from
-the **Settings** tab (**Check / install update**) or bundle it first.
+**Settings → Updates** (or bundle it first). The hosted Python server is under
+[Hosted / server mode](#hosted--server-mode).
 
 ## Hosted / server mode
 
@@ -133,10 +141,9 @@ python fetch_wordlists.py --full # OR the entire SecLists (multi-GB installer)
 > `--full` to bake all of SecLists into the build instead, or point Settings at
 > your own SecLists folder.
 >
-> The Windows installer clears the previously bundled `vendor\` on upgrade (see
-> `[InstallDelete]` in `installer.iss`), so upgrading from an older build drops
-> its large bundled lists rather than leaving them behind. Lists you downloaded
-> yourself live under `%LOCALAPPDATA%\NineLives` and are never touched.
+> The Electron installer replaces the bundled `vendor/` on upgrade, so updating
+> drops the old bundled lists rather than leaving them behind. Lists you
+> downloaded yourself live under `%LOCALAPPDATA%\NineLives` and are never touched.
 
 ## Build + installer
 
@@ -171,8 +178,9 @@ git tag v1.1.0 && git push origin v1.1.0   # triggers the release build
 
 ## Workflow
 
-1. **New? Hit the ? (Guide)** in the top bar (it opens itself on first launch) and
-   use **Try the demo** to crack the bundled Coherer capture.
+1. **New? Take the tour** — the **?** in the top bar launches a guided
+   spotlight tour (it runs itself on first launch); **Settings → Help → Demo**
+   cracks the bundled Coherer capture.
 2. **Settings (cog)**: optionally point at your SecLists checkout once, or download
    bigger lists — it indexes everything.
 3. **Crack tab**: pick the hash file, then the hash type — choose a **category**
@@ -201,20 +209,15 @@ If the app won't start, hangs, or behaves oddly, check the startup log:
 ~/.local/share/NineLives/startup.log        (Linux)
 ```
 
-It records each startup step (last line = where it got stuck), so it pinpoints
-launch problems that leave no visible error. A healthy launch starts the local
-server (`desktop: serving http://127.0.0.1:…`), then shows the window
-(`window shown (WebView2 ready)`, `page loaded`) and the page boots
-(`js: boot: done`). If the window line never arrives and a `WARN window not
-shown after 25s` line follows, the embedded WebView2 browser stalled — and the
-app falls back to opening in your default browser. The companion `pywebview.log`
-in the same folder logs the browser's own startup steps.
+It records each boot step (last line = where it got stuck), so it pinpoints
+launch problems that leave no visible error. A healthy launch ends with
+`js: boot: done`; if it never gets there, the last line points at the step that
+stalled — include it when you report a problem.
 
 All writable runtime data lives in that `NineLives` folder, not the install
-directory: settings, potfile, extracted captures, hashcat updates, the WebView2
-browser-data folder, and the two logs above. The app also switches its working
-directory there on launch, because WebView2 writes into the working directory
-and a double-click would otherwise leave it read-only.
+directory: settings, the potfile, extracted captures, downloaded wordlists,
+hashcat updates, and the startup log — kept out of the install directory so
+nothing needs admin rights.
 
 Cracks run from a `hcwork` subfolder there, which links in hashcat's read-only
 shared folders (`OpenCL`, `modules`, `rules`, …) and holds its compiled-kernel
