@@ -9,9 +9,12 @@
 const path = require("path");
 const { app, BrowserWindow, ipcMain } = require("electron");
 
-// In dev, bundled resources (webui/, vendor/) live in the repo root. In a
-// packaged build this is set to process.resourcesPath by the builder.
-process.env.NINELIVES_APP_DIR = process.env.NINELIVES_APP_DIR || path.resolve(__dirname, "..");
+// Bundled resources (webui/, vendor/): the repo root in dev, process.resourcesPath
+// in a packaged build (electron-builder copies them there via extraResources).
+// Must be set before requiring the backend, which reads it through paths.js.
+const RES_DIR = app.isPackaged ? process.resourcesPath : path.resolve(__dirname, "..");
+process.env.NINELIVES_APP_DIR = process.env.NINELIVES_APP_DIR || RES_DIR;
+const WEBUI_INDEX = path.join(RES_DIR, "webui", "index.html");
 
 const { Api } = require("./backend/api");
 
@@ -32,7 +35,7 @@ function createWindow() {
       nodeIntegration: false,
     },
   });
-  win.loadFile(path.join(__dirname, "..", "webui", "index.html"));
+  win.loadFile(WEBUI_INDEX);
   if (process.env.NINELIVES_DEBUG) win.webContents.openDevTools({ mode: "detach" });
 
   // Automated smoke check: once the page has loaded, confirm it booted and

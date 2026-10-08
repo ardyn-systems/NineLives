@@ -56,6 +56,9 @@ NINELIVES_SMOKE=1 npm run smoke   # boot the window headless-ish, print state, e
   extractor for rockyou), hashcat updater (`updater.js`, 7z CLI), and self-update
   check (`selfupdate.js`), all streaming progress over IPC. A shared
   redirect-following HTTP helper (`download.js`) backs them.
-- **Phase 3:** packaging with electron-builder (NSIS + AppImage), bundling
-  hashcat/wordlists; CI Node build + smoke-test.
+- **Phase 3 ✅:** packaging with electron-builder (NSIS installer + AppImage),
+  `extraResources` for webui/vendor, and a CI workflow (`.github/workflows/
+  electron.yml`) that builds the installers and smoke-tests the **packaged** app
+  (captures parity test too). hashcat/wordlists are stubbed here; full vendor
+  bundling + release wiring land at cutover.
 - **Phase 4:** cutover — Electron becomes the shipped app; retire pywebview.

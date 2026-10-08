@@ -1,0 +1,78 @@
+# Electron build (migration-in-progress). Builds the Electron app into real
+# installers (NSIS / AppImage) and smoke-tests the PACKAGED app, so the asar +
+# extraResources layout is proven. Not wired into releases — the Python build in
+# build.yml is still the shipping app. hashcat/wordlists are stubbed here; full
+# vendor bundling + release wiring land at cutover (Phase 4).
+name: electron
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "electron/**"
+      - "webui/**"
+      - ".github/workflows/electron.yml"
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: electron
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Captures parity test (Node vs Python)
+        run: node test/captures.test.js
+
+      - name: Linux runtime libraries for Electron
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y xvfb libnss3 libatk-bridge2.0-0 libgtk-3-0 libgbm1 libasound2t64 || sudo apt-get install -y xvfb libnss3 libatk-bridge2.0-0 libgtk-3-0 libgbm1 libasound2
+
+      - name: Stub vendor (real hashcat/wordlists bundled at cutover)
+        shell: bash
+        run: mkdir -p ../vendor && echo stub > ../vendor/.placeholder
+
+      - name: Build installer (electron-builder)
+        run: npm run dist
+
+      - name: Smoke-test the packaged app (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $env:NINELIVES_SMOKE = "1"
+          $p = Start-Process -FilePath dist\win-unpacked\ninelives.exe -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "packaged smoke failed ($($p.ExitCode))" }
+
+      - name: Smoke-test the packaged app (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          set +e
+          # --no-sandbox: CI's unpacked chrome-sandbox isn't root:4755 (the real
+          # AppImage sets this up); the sandbox isn't what we're testing here.
+          NINELIVES_SMOKE=1 xvfb-run -a dist/linux-unpacked/ninelives --smoke --no-sandbox
+          code=$?
+          echo "smoke exit=$code"
+          exit $code
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ninelives-electron-${{ matrix.os }}
+          path: |
+            electron/dist/NineLives-Setup-*.exe
+            electron/dist/*.AppImage
+          if-no-files-found: warn
