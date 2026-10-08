@@ -19,10 +19,8 @@ Screenshots are regenerated with `python docs/screenshots.py` (see
 
 Grab the latest build from the [Releases page](https://github.com/ardyn-systems/NineLives/releases):
 
-- **Windows:** `NineLives-Setup-<ver>.exe` (installer) or
-  `NineLives-<ver>-windows-x64-portable.zip` (no install — unzip and run).
-- **Linux:** `NineLives-<ver>-x86_64.AppImage` (mark executable and run; needs
-  `webkit2gtk` present) or the `-linux-x86_64.tar.gz`.
+- **Windows:** `NineLives-Setup-<ver>.exe` (installer).
+- **Linux:** `NineLives-<ver>-x86_64.AppImage` (mark executable and run).
 
 Each build **bundles hashcat and a small wordlist starter set**, so it cracks out
 of the box; grab bigger lists (rockyou etc.) from Settings (the cog) when you want

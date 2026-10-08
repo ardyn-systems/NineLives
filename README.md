@@ -142,25 +142,33 @@ python fetch_wordlists.py --full # OR the entire SecLists (multi-GB installer)
 
 ## Build + installer
 
-- **Windows:** `powershell -ExecutionPolicy Bypass -File build_windows.ps1`
-  → `dist\NineLives\NineLives.exe`, and (with [Inno Setup 6](https://jrsoftware.org/isdl.php)
-  installed) a double-click installer `dist\NineLives-Setup.exe`.
-  Flags: `-Full` (bundle all of SecLists), `-NoFetch` (reuse existing `vendor/`).
-- **Ubuntu:** `bash build_linux.sh` → `dist/NineLives/NineLives` and
-  `dist/NineLives-linux-x86_64.tar.gz`.
+NineLives is an **Electron** app (as of v1.0.0); builds use **electron-builder**
+from the `electron/` directory:
 
-(PyInstaller isn't a cross-compiler — build the Windows bundle on Windows and the
-Linux bundle on Ubuntu, from this same source tree.)
+```bash
+cd electron && npm install && npm run dist   # -> electron/dist/
+```
+
+- **Windows:** produces the NSIS installer `NineLives-Setup-<ver>.exe`.
+- **Linux:** produces `NineLives-<ver>-x86_64.AppImage` (mark executable and run).
+
+Each build bundles hashcat + the wordlist starter set from `electron/vendor/`.
+(electron-builder isn't a cross-compiler — build the Windows target on Windows and
+the Linux target on Ubuntu.)
+
+The legacy **Python/PyInstaller** build (`build_windows.ps1`, `build_linux.sh`,
+`.github/workflows/build.yml`) is archived — kept in the repo for reference but no
+longer the shipping path.
 
 ## Releases (CI)
 
-`.github/workflows/build.yml` builds both installers on every `v*` tag and
-attaches them to a GitHub Release — so "download and install" is just grabbing
-`NineLives-Setup.exe` from the Releases page. Each release re-fetches hashcat, so
-tagging a release picks up the latest hashcat automatically.
+`.github/workflows/electron.yml` builds the Windows + Linux targets on every `v*`
+tag and attaches them to a GitHub Release, alongside `SHA256SUMS-windows.txt` /
+`SHA256SUMS-linux.txt` — so "download and install" is just grabbing
+`NineLives-Setup-<ver>.exe` (or the `.AppImage`) from the Releases page.
 
 ```bash
-git tag v0.1.0 && git push origin v0.1.0   # triggers the release build
+git tag v1.1.0 && git push origin v1.1.0   # triggers the release build
 ```
 
 ## Workflow
