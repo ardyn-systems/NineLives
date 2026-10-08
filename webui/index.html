@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-theme="terrain">
+<html lang="en" data-theme="synthwave">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -54,13 +54,15 @@
           </label>
           <button class="btn" id="pick-hash" style="align-self:flex-end">Choose…</button>
         </div>
-        <div class="row">
-          <label class="field grow">Hash type
-            <input type="text" id="hashtype" list="hashtypes" placeholder="search… e.g. WPA, NTLM, 1000">
-            <datalist id="hashtypes"></datalist>
-          </label>
-          <span class="hint" id="type-hint" style="align-self:flex-end"></span>
-        </div>
+        <label class="field">Hash type
+          <div class="ht-pick">
+            <select id="ht-category" class="select ht-category" aria-label="Hash category"></select>
+            <select id="ht-mode" class="select ht-mode" aria-label="Hash mode"></select>
+          </div>
+          <input type="text" id="ht-search" class="ht-search"
+            placeholder="…or search every mode by name or number — e.g. WPA, NTLM, 1000">
+        </label>
+        <p class="hint" id="type-hint"></p>
       </div>
 
       <div class="card">
@@ -84,13 +86,24 @@
       <div class="row" style="margin-bottom:1rem">
         <button class="btn primary" id="run-btn">Run crack</button>
         <button class="btn danger" id="stop-btn" disabled>Stop</button>
-        <button class="btn" id="cmd-btn">Show command</button>
         <button class="btn" id="recovered-btn">Show recovered</button>
         <span class="spacer"></span>
-        <button class="btn ghost small" id="clear-btn">Clear console</button>
+        <button class="btn ghost small" id="cmd-btn">Show command</button>
+        <button class="btn ghost small" id="console-toggle">Show console</button>
       </div>
 
-      <div class="console" id="console"></div>
+      <!-- Plain-language crack status -->
+      <div class="status-card hidden" id="crack-status">
+        <div class="cs-head">
+          <span class="cs-state" id="cs-state">Starting…</span>
+          <span class="cs-recovered" id="cs-recovered"></span>
+        </div>
+        <div class="cs-bar"><div class="cs-fill" id="cs-fill"></div></div>
+        <div class="cs-meta" id="cs-meta">Preparing the GPU… the first run compiles kernels and can take ~30 seconds.</div>
+      </div>
+
+      <!-- Raw hashcat output / command, hidden behind the toggle -->
+      <div class="console hidden" id="console"></div>
     </section>
 
     <!-- ===== Captures view ===== -->

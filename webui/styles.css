@@ -159,6 +159,13 @@ select { cursor:pointer; }
 input:focus, select:focus { border-color:var(--accent); outline:none; }
 .hint { color:var(--muted); font-size:12px; }
 
+/* hash-type picker: category | mode, with a search fallback */
+.ht-pick { display:flex; gap:.5rem; }
+.ht-category { flex:0 0 11rem; font-weight:600; }
+.ht-mode { flex:1; min-width:0; }
+.ht-search { margin-top:.45rem; height:30px !important; font-size:12.5px;
+  background:var(--panel) !important; border-color:var(--line) !important; }
+
 /* ---------- Segmented (attack modes) ---------- */
 .segmented { display:flex; flex-wrap:wrap; gap:.4rem; }
 .seg { padding:.5rem .75rem; border:1px solid var(--line-strong); border-radius:8px;
@@ -188,6 +195,20 @@ input:focus, select:focus { border-color:var(--accent); outline:none; }
 .console .cmd { color:var(--accent); }
 .console .err { color:var(--danger); }
 
+/* ---------- Crack status (plain-language) ---------- */
+.status-card { border:1px solid var(--line); border-radius:12px; background:var(--panel);
+  padding:1rem 1.1rem; margin-bottom:1rem; }
+.cs-head { display:flex; align-items:baseline; justify-content:space-between; gap:1rem; margin-bottom:.6rem; }
+.cs-state { font-size:1.05rem; font-weight:700; }
+.cs-state.running { color:var(--accent); }
+.cs-state.ok { color:var(--ok, var(--accent)); }
+.cs-state.err { color:var(--danger); }
+.cs-recovered { color:var(--muted); font-size:13px; }
+.cs-bar { height:8px; border-radius:999px; background:var(--raised); overflow:hidden; }
+.cs-fill { height:100%; width:0; background:var(--accent); border-radius:999px;
+  transition:width .4s ease; }
+.cs-meta { margin-top:.55rem; color:var(--muted); font-size:12.5px; min-height:1em; }
+
 .badge { display:inline-flex; align-items:center; padding:.1rem .45rem; border-radius:999px;
   border:1px solid var(--line); font-size:11.5px; color:var(--muted); }
 .badge.accent { border-color:transparent; background:var(--accent-soft); color:var(--accent); }
@@ -209,6 +230,9 @@ input:focus, select:focus { border-color:var(--accent); outline:none; }
 
 /* ---------- Wordlist downloads (Settings) ---------- */
 .wl-downloads { margin-top:.2rem; }
+.wl-head { margin:.6rem 0 .2rem; font-weight:600; color:var(--text); font-size:13px; }
+.wl-note { margin:0 0 .4rem; color:var(--muted); font-size:12px; line-height:1.4; }
+.wl-note a { color:var(--accent); }
 .wl-dl { display:flex; align-items:center; gap:.6rem; padding:.55rem .2rem;
   border-top:1px solid var(--line); }
 .wl-dl-info { flex:1; min-width:0; line-height:1.35; }

@@ -161,25 +161,86 @@ function buildThemeMenu(current) {
   }));
 }
 
-/* ---------- hash types ---------- */
+/* ---------- hash types: category → mode (no 500-item scroll) ---------- */
+// Most-used modes, surfaced under "★ Common" so you rarely need the full list.
+const COMMON_IDS = [22000, 16800, 1000, 0, 100, 1400, 1700, 3200, 1800, 500,
+  5600, 13100, 18200, 1500, 22921, 900];
+
 function buildHashTypes() {
-  const dl = el("hashtypes");
-  dl.innerHTML = "";
+  S.modeById = new Map(S.hashModes.map((m) => [m.id, m]));
+  S.modesByCat = new Map();
   S.hashModes.forEach((m) => {
-    const label = `${m.id}  ${m.name}  [${m.category}]`;
-    S.modeByLabel.set(label, m);
-    S.modeById.set(m.id, m);
-    const o = document.createElement("option");
-    o.value = label;
-    dl.appendChild(o);
+    if (!S.modesByCat.has(m.category)) S.modesByCat.set(m.category, []);
+    S.modesByCat.get(m.category).push(m);
   });
+  const catSel = el("ht-category");
+  const prevCat = catSel.value;
+  catSel.innerHTML = "";
+  const addCat = (val, label) => {
+    const o = document.createElement("option"); o.value = val; o.textContent = label; catSel.appendChild(o);
+  };
+  addCat("__common", "★ Common");
+  [...S.modesByCat.keys()].sort((a, b) => a.localeCompare(b)).forEach((c) => addCat(c, c));
+  addCat("__all", "All modes");
+  catSel.value = [...catSel.options].some((o) => o.value === prevCat) ? prevCat : "__common";
+  populateModeSelect();
 }
+
+function modesForCategory(cat, filter) {
+  let list;
+  if (filter) {
+    const f = filter.toLowerCase();
+    list = S.hashModes.filter((m) => `${m.id} ${m.name} ${m.category}`.toLowerCase().includes(f));
+  } else if (cat === "__common") {
+    list = COMMON_IDS.map((id) => S.modeById.get(id)).filter(Boolean);
+  } else if (cat === "__all") {
+    list = S.hashModes.slice();
+  } else {
+    list = (S.modesByCat.get(cat) || []).slice();
+  }
+  return list;
+}
+
+function populateModeSelect(filter) {
+  const modeSel = el("ht-mode");
+  const prev = modeSel.value;
+  const list = modesForCategory(el("ht-category").value, filter);
+  modeSel.innerHTML = "";
+  const ph = document.createElement("option");
+  ph.value = ""; ph.textContent = list.length ? "— choose a hash type —" : "— no matches —";
+  modeSel.appendChild(ph);
+  list.forEach((m) => {
+    const o = document.createElement("option");
+    o.value = String(m.id); o.textContent = `${m.id} — ${m.name}`;
+    modeSel.appendChild(o);
+  });
+  if ([...modeSel.options].some((o) => o.value === prev)) modeSel.value = prev;
+  onHashModeChange();
+}
+
 function currentMode() {
-  const v = el("hashtype").value.trim();
-  if (S.modeByLabel.has(v)) return S.modeByLabel.get(v);
-  const num = parseInt(v, 10);
-  if (!isNaN(num) && S.modeById.has(num)) return S.modeById.get(num);
-  return null;
+  const id = parseInt(el("ht-mode").value, 10);
+  return (!isNaN(id) && S.modeById.has(id)) ? S.modeById.get(id) : null;
+}
+
+function onHashModeChange() {
+  const m = currentMode();
+  el("type-hint").textContent = m ? `mode ${m.id} · ${m.category}` : "";
+  refreshWordlists();
+}
+
+// Select a mode by id (used by "Use in Crack"), jumping to its category.
+function setHashMode(id) {
+  const m = S.modeById.get(id);
+  if (!m) return;
+  const catSel = el("ht-category");
+  el("ht-search").value = "";
+  let cat = COMMON_IDS.includes(id) ? "__common" : m.category;
+  if (![...catSel.options].some((o) => o.value === cat)) cat = "__all";
+  catSel.value = cat;
+  populateModeSelect();
+  el("ht-mode").value = String(id);
+  onHashModeChange();
 }
 
 /* ---------- attack modes ---------- */
@@ -302,8 +363,54 @@ function out(text, cls) {
   c.appendChild(span);
   c.scrollTop = c.scrollHeight;
 }
-window.hbOutput = (line) => out(line);
-window.hbDone = () => { el("run-btn").disabled = false; el("stop-btn").disabled = true; out("\n=== finished ===\n", "cmd"); };
+window.hbOutput = (line) => { out(line); parseCrackStatus(line); };
+window.hbDone = () => {
+  el("run-btn").disabled = false; el("stop-btn").disabled = true;
+  out("\n=== finished ===\n", "cmd");
+  finishStatus();
+};
+
+/* ---------- plain-language crack status (parses hashcat's --status output) ---------- */
+let _crack = null;
+function startStatus() {
+  _crack = { pct: 0, speed: "", eta: "", recovered: "", status: "Running" };
+  const card = el("crack-status");
+  card.classList.remove("hidden");
+  el("cs-state").textContent = "Starting…"; el("cs-state").className = "cs-state";
+  el("cs-recovered").textContent = "";
+  el("cs-fill").style.width = "0%";
+  el("cs-meta").textContent = "Preparing the GPU… the first run compiles kernels and can take ~30 seconds.";
+}
+function parseCrackStatus(line) {
+  if (!_crack) return;
+  let m;
+  if ((m = /Status\.+:\s*([A-Za-z]+)/.exec(line))) _crack.status = m[1];
+  if ((m = /Progress\.+:\s*\d+\/\d+\s*\(([\d.]+)%\)/.exec(line))) _crack.pct = parseFloat(m[1]);
+  if ((m = /Speed\.#\*\.+:\s*([\d.]+\s*[kMGT]?H\/s)/.exec(line))) _crack.speed = m[1].replace(/\s+/g, " ").trim();
+  if ((m = /Recovered\.+:\s*(\d+)\/(\d+)/.exec(line))) _crack.recovered = `${m[1]} of ${m[2]}`;
+  if ((m = /Time\.Estimated\.+:.*\(([^)]+)\)/.exec(line))) _crack.eta = m[1];
+  renderStatus();
+}
+function renderStatus() {
+  if (!_crack) return;
+  el("cs-fill").style.width = Math.min(100, _crack.pct) + "%";
+  if (/Running/i.test(_crack.status)) { el("cs-state").textContent = "Cracking…"; el("cs-state").className = "cs-state running"; }
+  el("cs-recovered").textContent = _crack.recovered ? "Recovered " + _crack.recovered : "";
+  const bits = [];
+  if (_crack.pct) bits.push(Math.round(_crack.pct) + "%");
+  if (_crack.speed) bits.push(_crack.speed);
+  if (_crack.eta && /Running/i.test(_crack.status)) bits.push("~" + _crack.eta + " left");
+  if (bits.length) el("cs-meta").textContent = bits.join("  ·  ");
+}
+function finishStatus() {
+  if (!_crack) return;
+  const cracked = _crack.recovered && !/^0 of/.test(_crack.recovered);
+  const s = el("cs-state");
+  if (cracked) { s.textContent = "Cracked! 🎉"; s.className = "cs-state ok"; el("cs-fill").style.width = "100%"; el("cs-meta").textContent = "Password recovered — click Show recovered."; }
+  else if (/Exhausted/i.test(_crack.status)) { s.textContent = "Finished — not found in this wordlist"; s.className = "cs-state"; el("cs-fill").style.width = "100%"; }
+  else if (/Quit|Abort/i.test(_crack.status)) { s.textContent = "Stopped"; s.className = "cs-state"; }
+  else { s.textContent = "Finished"; s.className = "cs-state"; }
+}
 // Background hashcat probe finished: swap in the full hash-mode list + version.
 window.hbCatalog = (modes, version) => {
   if (Array.isArray(modes) && modes.length) { S.hashModes = modes; buildHashTypes(); }
@@ -388,11 +495,9 @@ function wireEvents() {
     afterImport(await api().import_capture_bytes(f.name, b64));
   });
 
-  el("hashtype").addEventListener("change", async () => {
-    const m = currentMode();
-    el("type-hint").textContent = m ? `mode ${m.id} · ${m.category}` : "";
-    await refreshWordlists();
-  });
+  el("ht-category").addEventListener("change", () => { el("ht-search").value = ""; populateModeSelect(); });
+  el("ht-mode").addEventListener("change", onHashModeChange);
+  el("ht-search").addEventListener("input", () => populateModeSelect(el("ht-search").value.trim() || undefined));
 
   el("pick-hash").addEventListener("click", async () => {
     const f = await pickFile(".hc22000,.hccapx,.txt,.hash,.lst,*");
@@ -403,23 +508,32 @@ function wireEvents() {
   });
   el("rescan-btn").addEventListener("click", rescan);
 
+  const showConsole = (on) => {
+    const c = el("console"); const t = el("console-toggle");
+    const vis = on === undefined ? c.classList.contains("hidden") : on;
+    c.classList.toggle("hidden", !vis);
+    t.textContent = vis ? "Hide console" : "Show console";
+  };
+  el("console-toggle").addEventListener("click", () => showConsole());
+
   el("cmd-btn").addEventListener("click", async () => {
     const r = await api().build_command(gatherParams());
-    if (r.error) return out("\n[!] " + r.error + "\n", "err");
-    out("\n$ " + r.command + "\n", "cmd");
+    out(r.error ? "\n[!] " + r.error + "\n" : "\n$ " + r.command + "\n", r.error ? "err" : "cmd");
+    showConsole(true);
   });
   el("run-btn").addEventListener("click", async () => {
     const r = await api().run(gatherParams());
-    if (r.error) return out("\n[!] " + r.error + "\n", "err");
+    if (r.error) { startStatus(); el("cs-state").textContent = "Couldn't start"; el("cs-state").className = "cs-state err"; el("cs-meta").textContent = r.error; el("cs-fill").style.width = "0%"; out("\n[!] " + r.error + "\n", "err"); return; }
     el("run-btn").disabled = true; el("stop-btn").disabled = false;
+    startStatus();
     out("\n=== starting ===\n$ " + r.command + "\n", "cmd");
   });
   el("stop-btn").addEventListener("click", () => api().stop());
   el("recovered-btn").addEventListener("click", async () => {
     const r = await api().show_recovered(gatherParams());
     out("\n--- recovered ---\n" + (r.text || "(nothing yet)") + "\n");
+    showConsole(true);
   });
-  el("clear-btn").addEventListener("click", () => { el("console").innerHTML = ""; });
 
   const doUpdate = async () => {
     out("\n[update] checking…\n", "cmd");
@@ -466,7 +580,10 @@ async function renderWordlistDownloads() {
   try { items = (await api().list_wordlist_downloads()).items || []; }
   catch (e) { return; }
   box.innerHTML =
-    `<p class="hint" style="margin-top:10px">Download more wordlists (fetched from the SecLists project):</p>`;
+    `<p class="wl-head">Download more wordlists</p>
+     <p class="wl-note">⚠ Needs an internet connection. Lists are downloaded from the
+       <a href="https://github.com/danielmiessler/SecLists" target="_blank" rel="noopener">SecLists project</a>
+       (github.com/danielmiessler/SecLists) and saved to your data folder.</p>`;
   items.forEach((it) => {
     const row = document.createElement("div");
     row.className = "wl-dl";
@@ -568,11 +685,7 @@ async function useCapture(id) {
   const r = await api().use_capture(id);
   if (r.error) { el("cap-msg").textContent = r.error; return; }
   el("hashfile").value = r.hashfile;
-  const m = S.modeById.get(r.mode_id);
-  if (m) {
-    el("hashtype").value = `${m.id}  ${m.name}  [${m.category}]`;
-    el("hashtype").dispatchEvent(new Event("change"));
-  }
+  setHashMode(r.mode_id);
   document.querySelector('.tab[data-view="crack"]').click();
   out(`\n[capture] loaded ${r.essid || ""} → ${r.hashfile}\n`, "cmd");
 }

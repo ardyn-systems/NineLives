@@ -299,9 +299,13 @@ class Api extends EventEmitter {
     if (!hashcat.findHashcat()) return { error: "hashcat not installed (Settings - install/update)." };
     const [cmd, err] = this._assemble(p);
     if (err) return { error: err };
+    // Emit a periodic status screen so the UI can show live progress in plain
+    // language. (build_command / "Show command" shows the clean command without
+    // these, so the user sees the meaningful flags.)
+    const runCmd = cmd.concat(["--status", "--status-timer", "2"]);
     let proc;
     try {
-      proc = spawn(cmd[0], cmd.slice(1), { cwd: hashcat.hashcatWorkdir() });
+      proc = spawn(runCmd[0], runCmd.slice(1), { cwd: hashcat.hashcatWorkdir() });
     } catch (e) {
       return { error: `Could not start hashcat: ${e.message || e}` };
     }

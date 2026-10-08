@@ -11,9 +11,8 @@ const THEMES = {
   daylight: { name: "Daylight", note: "Light, good for printing", swatch: ["#f4f5f7", "#2563eb", "#0d9488", "#d97706"] },
   blueprint: { name: "Blueprint", note: "Engineering grid", swatch: ["#0f2a4a", "#ffffff", "#ffd479", "#8fd3ff"] },
 };
-// terrain first (NetSeer's default, for a consistent feel across the apps),
-// then NineLives' own synthwave/cyberpunk, then the rest of NetSeer's set.
-const ORDER = ["terrain", "midnight", "daylight", "blueprint", "synthwave", "cyberpunk"];
-const DEFAULT = "terrain";
+// NineLives' own synthwave (default) + cyberpunk first, then NetSeer's four.
+const ORDER = ["synthwave", "cyberpunk", "terrain", "midnight", "daylight", "blueprint"];
+const DEFAULT = "synthwave";
 
 module.exports = { THEMES, ORDER, DEFAULT };

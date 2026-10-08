@@ -40,7 +40,7 @@ def _prep() -> None:
     import settings
     import api
     settings.set("acknowledged", True)
-    settings.set("ui_theme", "terrain")
+    settings.set("ui_theme", "synthwave")
     settings.set("captures_index", [])
     fixture = ROOT / "tests" / "fixtures" / "wpa-Induction.pcap"
     api.Api().import_capture(str(fixture))
