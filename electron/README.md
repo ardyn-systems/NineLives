@@ -52,7 +52,10 @@ NINELIVES_SMOKE=1 npm run smoke   # boot the window headless-ish, print state, e
   and `hashcatWorkdir` (OpenCL junctions via `fs.symlinkSync('junction')`).
   Proven in the Electron window: a crack streams its output and recovers the
   Coherer passphrase (`Induction`).
-- **Phase 2:** wordlist downloads, hashcat updater, self-update.
+- **Phase 2 ✅:** wordlist downloads (`wordlist_dl.js`, incl. a minimal tar.gz
+  extractor for rockyou), hashcat updater (`updater.js`, 7z CLI), and self-update
+  check (`selfupdate.js`), all streaming progress over IPC. A shared
+  redirect-following HTTP helper (`download.js`) backs them.
 - **Phase 3:** packaging with electron-builder (NSIS + AppImage), bundling
   hashcat/wordlists; CI Node build + smoke-test.
 - **Phase 4:** cutover — Electron becomes the shipped app; retire pywebview.
