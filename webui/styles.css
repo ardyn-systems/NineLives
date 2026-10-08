@@ -272,20 +272,24 @@ input:focus, select:focus { border-color:var(--accent); outline:none; }
 .settings-foot { display:flex; align-items:center; gap:.5rem;
   padding:.85rem 1.1rem; border-top:1px solid var(--line); }
 
-/* Guide dialog */
-.guide-panel { max-width:560px; }
-.guide-lead { margin:0; color:var(--muted); font-size:13.5px; line-height:1.5; }
-.guide-steps { list-style:none; margin:.2rem 0 0; padding:0;
-  display:flex; flex-direction:column; gap:.7rem; }
-.guide-steps li { display:grid; grid-template-columns:28px 1fr; gap:.7rem; align-items:start;
-  font-size:13.5px; line-height:1.5; }
-.guide-steps .gs-n { width:26px; height:26px; border-radius:50%; display:flex;
-  align-items:center; justify-content:center; font-weight:700; font-size:13px;
-  color:var(--bg); background:var(--accent); }
-.guide-steps code { font-family:var(--mono,monospace); font-size:12px;
-  padding:.05rem .3rem; border-radius:4px; background:color-mix(in srgb,var(--line) 60%,transparent); }
-.guide-demo-note { margin:.2rem 0 0; font-size:13px; color:var(--muted);
-  border-left:3px solid var(--accent); padding:.3rem 0 .3rem .7rem; line-height:1.5; }
+/* Spotlight tour: a cut-out box (huge box-shadow mask) + a floating step card */
+.tour { position:fixed; inset:0; z-index:80; }
+.tour.hidden { display:none; }
+.tour-spot { position:fixed; border-radius:12px; box-shadow:0 0 0 9999px rgba(0,0,0,0.58);
+  outline:2px solid var(--accent); outline-offset:2px; pointer-events:none;
+  transition:all .22s ease; }
+.tour-spot.none { width:0 !important; height:0 !important; left:50% !important;
+  top:40% !important; outline:0; }
+.tour-card { position:fixed; width:min(340px, calc(100% - 2rem));
+  padding:1rem 1.1rem .8rem; border:1px solid var(--line-strong); border-radius:14px;
+  background:var(--panel); box-shadow:var(--shadow); transition:left .22s ease, top .22s ease; }
+.tour-step { color:var(--accent); font-size:11.5px; font-weight:700; letter-spacing:.06em;
+  text-transform:uppercase; }
+.tour-card h2 { margin:.2rem 0 .35rem; font-size:1.05rem; }
+.tour-card p { margin:0 0 .8rem; color:var(--muted); font-size:13.5px; line-height:1.5; }
+.tour-actions { display:flex; align-items:center; justify-content:space-between; gap:.5rem; }
+.tour-actions > span { display:flex; gap:.4rem; }
+@media (prefers-reduced-motion: reduce) { .tour-spot, .tour-card { transition:none; } }
 
 /* Settings menu (sectioned: left nav + content) */
 .settings-menu { max-width:720px; }
