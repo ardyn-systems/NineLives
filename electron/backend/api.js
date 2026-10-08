@@ -75,7 +75,7 @@ class Api extends EventEmitter {
     const p = hashcat.findHashcat();
     if (!p) return;
     const wd = hashcat.hashcatWorkdir();
-    execFile(p, ["--help"], { cwd: wd, timeout: 40000, maxBuffer: 64 * 1024 * 1024 }, (err, stdout) => {
+    execFile(p, ["-hh"], { cwd: wd, timeout: 40000, maxBuffer: 64 * 1024 * 1024 }, (err, stdout) => {
       const modes = hashcat.parseHashModesText(stdout || "");
       if (modes.length) {
         hashcat.cacheHashModes(modes);
@@ -134,7 +134,7 @@ class Api extends EventEmitter {
     for (const [grp, opts] of groups) {
       out.push({
         group: grp,
-        options: opts.map((o) => ({ key: o.long || o.flag, flag: o.flag, long: o.long, takes_value: o.takes_value, desc: o.desc, example: o.example })),
+        options: opts.map((o) => ({ key: o.long || o.flag, flag: o.flag, long: o.long, takes_value: o.takes_value, desc: o.desc, example: o.example, label: o.label, choices: o.choices })),
       });
     }
     return { groups: out };
@@ -299,9 +299,13 @@ class Api extends EventEmitter {
     if (!hashcat.findHashcat()) return { error: "hashcat not installed (Settings - install/update)." };
     const [cmd, err] = this._assemble(p);
     if (err) return { error: err };
+    // Emit a periodic status screen so the UI can show live progress in plain
+    // language. (build_command / "Show command" shows the clean command without
+    // these, so the user sees the meaningful flags.)
+    const runCmd = cmd.concat(["--status", "--status-timer", "2"]);
     let proc;
     try {
-      proc = spawn(cmd[0], cmd.slice(1), { cwd: hashcat.hashcatWorkdir() });
+      proc = spawn(runCmd[0], runCmd.slice(1), { cwd: hashcat.hashcatWorkdir() });
     } catch (e) {
       return { error: `Could not start hashcat: ${e.message || e}` };
     }
@@ -390,10 +394,12 @@ class Api extends EventEmitter {
       try {
         const ver = await updater.install(version, (m) => this._emit("hbOutput", `[update] ${m}\n`));
         this._emit("hbOutput", `[update] done: hashcat ${ver}\n`);
-        const modes = hashcat.refreshHashModes();
+        const modes = hashcat.parseHashModes();
         if (modes.length) {
+          hashcat.cacheHashModes(modes);
           this.modes = modes;
           this.modeById = new Map(this.modes.map((m) => [m.id, m]));
+          this._emit("hbCatalog", this.modes, hashcat.currentVersion());
         }
       } catch (e) {
         this._emit("hbOutput", `[update] failed: ${e.message || e}\n`);

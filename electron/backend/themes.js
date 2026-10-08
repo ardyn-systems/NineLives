@@ -11,6 +11,7 @@ const THEMES = {
   daylight: { name: "Daylight", note: "Light, good for printing", swatch: ["#f4f5f7", "#2563eb", "#0d9488", "#d97706"] },
   blueprint: { name: "Blueprint", note: "Engineering grid", swatch: ["#0f2a4a", "#ffffff", "#ffd479", "#8fd3ff"] },
 };
+// NineLives' own synthwave (default) + cyberpunk first, then NetSeer's four.
 const ORDER = ["synthwave", "cyberpunk", "terrain", "midnight", "daylight", "blueprint"];
 const DEFAULT = "synthwave";
 

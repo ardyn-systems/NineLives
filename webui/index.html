@@ -8,21 +8,35 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div class="topbar">
-    <div class="brand">
-      <img class="logo" src="logo.png" alt="NineLives" width="30" height="30">
+  <!-- Frameless custom title bar: drag region (brand + status) plus app actions
+       and integrated window controls. -->
+  <div class="titlebar">
+    <div class="brand drag">
+      <img class="logo" src="logo.png" alt="NineLives" width="28" height="28">
       <div class="brand-text">
         <span class="brand-name">NineLives</span>
         <span class="brand-tag">hashcat control console</span>
       </div>
     </div>
-    <div class="status" id="status">starting…</div>
+    <div class="status drag" id="status">starting…</div>
     <div class="top-actions">
       <div class="menu-wrap">
-        <button class="btn" id="theme-btn">Theme ▾</button>
+        <button class="icon-btn" id="theme-btn" title="Theme" aria-label="Theme">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18c.9 0 1.5-.7 1.5-1.5 0-.4-.2-.8-.4-1-.3-.3-.4-.6-.4-1 0-.8.7-1.5 1.5-1.5H16a5 5 0 0 0 5-5c0-4.4-4-8-9-8Z" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="7.5" cy="12" r="1.2" fill="currentColor"/><circle cx="10.5" cy="7.5" r="1.2" fill="currentColor"/><circle cx="15" cy="7.5" r="1.2" fill="currentColor"/></svg>
+        </button>
         <div class="menu hidden" id="theme-menu"></div>
       </div>
-      <button class="btn" id="update-btn">Check for updates</button>
+      <button class="icon-btn" id="guide-btn" title="Guide" aria-label="Guide" aria-haspopup="dialog">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M9.3 9.2a2.7 2.7 0 0 1 5.2 1c0 1.8-2.7 2-2.7 3.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="12" cy="17.2" r="1.1" fill="currentColor"/></svg>
+      </button>
+      <button class="icon-btn" id="settings-btn" title="Settings" aria-label="Settings" aria-haspopup="dialog">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+      </button>
+    </div>
+    <div class="window-controls" id="window-controls">
+      <button class="win-btn" id="win-min" title="Minimize" aria-label="Minimize"><svg viewBox="0 0 10 10"><path d="M1 5h8" stroke="currentColor" stroke-width="1"/></svg></button>
+      <button class="win-btn" id="win-max" title="Maximize" aria-label="Maximize"><svg viewBox="0 0 10 10"><rect x="1" y="1" width="8" height="8" fill="none" stroke="currentColor" stroke-width="1"/></svg></button>
+      <button class="win-btn danger" id="win-close" title="Close" aria-label="Close"><svg viewBox="0 0 10 10"><path d="M1 1l8 8M9 1l-8 8" stroke="currentColor" stroke-width="1"/></svg></button>
     </div>
   </div>
 
@@ -30,7 +44,6 @@
     <div class="tabs">
       <button class="tab active" data-view="crack">Crack</button>
       <button class="tab" data-view="captures">Captures</button>
-      <button class="tab" data-view="settings">Settings</button>
     </div>
 
     <!-- ===== Crack view ===== -->
@@ -44,13 +57,15 @@
           </label>
           <button class="btn" id="pick-hash" style="align-self:flex-end">Choose…</button>
         </div>
-        <div class="row">
-          <label class="field grow">Hash type
-            <input type="text" id="hashtype" list="hashtypes" placeholder="search… e.g. WPA, NTLM, 1000">
-            <datalist id="hashtypes"></datalist>
-          </label>
-          <span class="hint" id="type-hint" style="align-self:flex-end"></span>
-        </div>
+        <label class="field">Hash type
+          <div class="ht-pick">
+            <select id="ht-category" class="select ht-category" aria-label="Hash category"></select>
+            <select id="ht-mode" class="select ht-mode" aria-label="Hash mode"></select>
+          </div>
+          <input type="text" id="ht-search" class="ht-search"
+            placeholder="…or search every mode by name or number — e.g. WPA, NTLM, 1000">
+        </label>
+        <p class="hint" id="type-hint"></p>
       </div>
 
       <div class="card">
@@ -74,13 +89,24 @@
       <div class="row" style="margin-bottom:1rem">
         <button class="btn primary" id="run-btn">Run crack</button>
         <button class="btn danger" id="stop-btn" disabled>Stop</button>
-        <button class="btn" id="cmd-btn">Show command</button>
         <button class="btn" id="recovered-btn">Show recovered</button>
         <span class="spacer"></span>
-        <button class="btn ghost small" id="clear-btn">Clear console</button>
+        <button class="btn ghost small" id="cmd-btn">Show command</button>
+        <button class="btn ghost small" id="console-toggle">Show console</button>
       </div>
 
-      <div class="console" id="console"></div>
+      <!-- Plain-language crack status -->
+      <div class="status-card hidden" id="crack-status">
+        <div class="cs-head">
+          <span class="cs-state" id="cs-state">Starting…</span>
+          <span class="cs-recovered" id="cs-recovered"></span>
+        </div>
+        <div class="cs-bar"><div class="cs-fill" id="cs-fill"></div></div>
+        <div class="cs-meta" id="cs-meta">Preparing the GPU… the first run compiles kernels and can take ~30 seconds.</div>
+      </div>
+
+      <!-- Raw hashcat output / command, hidden behind the toggle -->
+      <div class="console hidden" id="console"></div>
     </section>
 
     <!-- ===== Captures view ===== -->
@@ -103,40 +129,104 @@
       </div>
     </section>
 
-    <!-- ===== Settings view ===== -->
-    <section id="view-settings" class="hidden">
-      <div class="card">
-        <h2>Wordlists</h2>
-        <p class="sub">Installed builds ship a small starter set. Download bigger
-          lists below, or point at your own SecLists folder — all of them feed
-          the dropdowns.</p>
-        <div class="row">
-          <label class="field grow">SecLists / wordlists folder
-            <input type="text" id="seclists" placeholder="paste the full path to your SecLists folder (optional)">
-          </label>
-          <button class="btn" id="rescan-btn" style="align-self:flex-end">Use folder</button>
-        </div>
-        <p class="hint" id="wl-count"></p>
-        <div id="wl-downloads" class="wl-downloads"></div>
+  </div>
+
+  <!-- ===== Settings dialog (opened by the cog) ===== -->
+  <div id="settings-overlay" class="overlay hidden">
+    <div class="settings-panel">
+      <div class="settings-head">
+        <h2>Settings</h2>
+        <button class="icon-btn" id="settings-close" title="Close" aria-label="Close settings">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.8" fill="none"/></svg>
+        </button>
       </div>
-      <div class="card">
-        <h2>hashcat</h2>
-        <p class="sub">Bundled with installed builds and auto-updated from hashcat's releases.</p>
-        <p class="hint" id="hc-info"></p>
-        <div class="row">
-          <button class="btn" id="update-btn2">Check / install update</button>
+      <div class="settings-body">
+        <div class="card">
+          <h2>Wordlists</h2>
+          <p class="sub">Installed builds ship a small starter set. Download bigger
+            lists below, or point at your own SecLists folder — all of them feed
+            the dropdowns.</p>
+          <div class="row">
+            <label class="field grow">SecLists / wordlists folder
+              <input type="text" id="seclists" placeholder="paste the full path to your SecLists folder (optional)">
+            </label>
+            <button class="btn" id="rescan-btn" style="align-self:flex-end">Use folder</button>
+          </div>
+          <p class="hint" id="wl-count"></p>
+          <div id="wl-downloads" class="wl-downloads"></div>
+        </div>
+        <div class="card">
+          <h2>hashcat</h2>
+          <p class="sub">Bundled with installed builds and auto-updated from hashcat's releases.</p>
+          <p class="hint" id="hc-info"></p>
+          <div class="row">
+            <button class="btn" id="update-btn2">Check / install update</button>
+          </div>
+        </div>
+        <div class="card">
+          <h2>NineLives</h2>
+          <p class="sub">Version <span id="app-version">—</span>. Updates come from
+            the project's GitHub releases.</p>
+          <p class="hint" id="app-update-msg"></p>
+          <div class="row">
+            <button class="btn primary" id="app-update-btn">Check for updates</button>
+          </div>
         </div>
       </div>
-      <div class="card">
-        <h2>NineLives</h2>
-        <p class="sub">Version <span id="app-version">—</span>. Updates come from
-          the project's GitHub releases.</p>
-        <p class="hint" id="app-update-msg"></p>
-        <div class="row">
-          <button class="btn primary" id="app-update-btn">Check for updates</button>
-        </div>
+    </div>
+  </div>
+
+  <!-- ===== Guide dialog (opened by the ? button, and once on first run) ===== -->
+  <div id="guide-overlay" class="overlay hidden">
+    <div class="settings-panel guide-panel">
+      <div class="settings-head">
+        <h2>Welcome to NineLives</h2>
+        <button class="icon-btn" id="guide-close" title="Close" aria-label="Close guide">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.8" fill="none"/></svg>
+        </button>
       </div>
-    </section>
+      <div class="settings-body">
+        <p class="guide-lead">Recover passwords from hashes and Wi-Fi captures with
+          hashcat — no command line required. Here's the whole flow:</p>
+        <ol class="guide-steps">
+          <li>
+            <span class="gs-n">1</span>
+            <div><b>Pick what to crack.</b> Choose a hash file on the <b>Crack</b> tab,
+              or drop a <code>.pcap</code>/<code>.cap</code> on the <b>Captures</b> tab
+              and click <b>Use in Crack</b>.</div>
+          </li>
+          <li>
+            <span class="gs-n">2</span>
+            <div><b>Confirm the hash type.</b> Loading a capture fills this in for you.
+              Otherwise start in <b>★ Common</b>, or search by name or number
+              (e.g. <code>WPA</code>, <code>NTLM</code>, <code>1000</code>).</div>
+          </li>
+          <li>
+            <span class="gs-n">3</span>
+            <div><b>Choose an attack.</b> <b>Straight (dictionary)</b> is the usual
+              starting point. Pick a wordlist — grab bigger ones from the
+              <b>⚙ Settings</b> dialog.</div>
+          </li>
+          <li>
+            <span class="gs-n">4</span>
+            <div><b>Run it.</b> Press <b>Run crack</b> and watch the plain-language
+              status bar. Need the raw hashcat output? Click <b>Show console</b>.</div>
+          </li>
+          <li>
+            <span class="gs-n">5</span>
+            <div><b>Get results.</b> Cracked passwords show in the status bar and under
+              <b>Show recovered</b>.</div>
+          </li>
+        </ol>
+        <p class="guide-demo-note">New here? The demo loads a bundled Wi-Fi capture
+          (<b>Coherer</b>). Crack it to recover the password <b>“Induction.”</b></p>
+      </div>
+      <div class="settings-foot">
+        <button class="btn primary" id="guide-demo-btn">Try the demo</button>
+        <span class="spacer"></span>
+        <button class="btn" id="guide-ok">Got it</button>
+      </div>
+    </div>
   </div>
 
   <!-- in-page modal (replaces blocking window.confirm, which hangs WebView2) -->

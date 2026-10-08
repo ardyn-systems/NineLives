@@ -165,11 +165,18 @@ git tag v0.1.0 && git push origin v0.1.0   # triggers the release build
 
 ## Workflow
 
-1. **Settings → SecLists folder**: point at your SecLists checkout once; it indexes everything.
-2. **Crack tab**: pick the hash file, choose the hash type (searchable), pick an attack mode.
-3. The **Inputs** and **Options** panels rebuild for that attack mode — only compatible options appear, each explained.
-4. Wordlist dropdowns show ★ suggestions for your hash type first.
-5. **Show command** to preview, **Run crack** to go, **Show recovered** to read results.
+1. **New? Hit the ? (Guide)** in the top bar (it opens itself on first launch) and
+   use **Try the demo** to crack the bundled Coherer capture.
+2. **Settings (cog)**: optionally point at your SecLists checkout once, or download
+   bigger lists — it indexes everything.
+3. **Crack tab**: pick the hash file, then the hash type — choose a **category**
+   (★ Common first) and **mode**, or just **search** by name/number.
+4. The **Inputs** and **Options** panels rebuild for the chosen attack mode — only
+   compatible options appear, as plain-language **toggles** and **dropdowns** (pick
+   a value and the toggle flips on), grouped into collapsible sections.
+5. **Run crack** to go: a plain-language **status bar** tracks progress; the raw
+   hashcat output lives behind **Show console**. **Show command** previews the exact
+   command; **Show recovered** reads results.
 
 ## Roadmap / fine-tuning
 

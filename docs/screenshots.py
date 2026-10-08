@@ -84,9 +84,10 @@ def main() -> int:
             page.wait_for_timeout(400)
             shot("captures")
 
-            page.click('.tab[data-view="settings"]')
+            page.click("#settings-btn")   # Settings is a cog-opened dialog now
             page.wait_for_timeout(300)
             shot("settings")
+            page.click("#settings-close")
 
             page.click('.tab[data-view="crack"]')
             page.wait_for_timeout(200)

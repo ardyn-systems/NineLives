@@ -25,8 +25,12 @@ Grab the latest build from the [Releases page](https://github.com/ardyn-systems/
   `webkit2gtk` present) or the `-linux-x86_64.tar.gz`.
 
 Each build **bundles hashcat and a small wordlist starter set**, so it cracks out
-of the box; grab bigger lists (rockyou etc.) from the Settings tab when you want
+of the box; grab bigger lists (rockyou etc.) from Settings (the cog) when you want
 them. Verify downloads against `SHA256SUMS-<os>.txt`.
+
+New to NineLives? The **? (Guide)** button in the top bar opens an in-app
+walkthrough — the same one that pops up the first time you launch — and its
+**Try the demo** button jumps you straight to the bundled Coherer capture.
 
 ## The Crack tab
 
@@ -35,18 +39,26 @@ them. Verify downloads against `SHA256SUMS-<os>.txt`.
 1. **Target** — set the **Hash file** and the **Hash type**. For WPA, import a
    capture on the **Captures** tab and click **Use in Crack** to fill this in
    automatically; for other hashes, **Choose…** a hash file (it's copied into
-   your data folder). The type box is searchable: type `WPA`, `NTLM`, or a mode
-   number — the full hash-mode list comes from hashcat itself.
+   your data folder). The hash type is organized so you don't scroll 500+ modes:
+   pick a **category** (starting with **★ Common**), then the **mode** from the
+   second dropdown — or ignore both and **search** by name or number (`WPA`,
+   `NTLM`, `1000`). The full list comes from hashcat itself.
 2. **Attack** — pick how candidates are generated. The panels below **adapt to
    this choice**: dictionary shows rule options, mask modes show charsets, and so
    on — so you never guess which flags combine.
 3. **Inputs** — pick a wordlist (or type a mask). Wordlists come from your
    SecLists folder, with ★ suggestions for the chosen hash type shown first.
-4. **Options** — every stackable option for the attack, each with a plain-English
-   explanation. Tick what you want.
-5. **Run crack** — streams hashcat's live output into the console. **Show
-   command** previews the exact hashcat command; **Show recovered** lists cracked
-   results.
+4. **Options** — only the options that stack with the chosen attack, grouped into
+   collapsible sections with **plain-language labels**. Flip a **toggle** to turn
+   one on; options with set choices (workload, device type, output format) are
+   **dropdowns**, and picking a value flips the toggle on for you — so there's
+   almost nothing to type. The raw hashcat flag is shown in small type under each
+   label for reference.
+5. **Run crack** — a plain-language **status bar** shows what's happening
+   (preparing, cracking with a progress bar, speed, estimate, and recovered
+   count), ending in **Cracked! 🎉** or **Finished — not found**. The raw hashcat
+   output is tucked behind **Show console**; **Show command** previews the exact
+   command; **Show recovered** lists cracked results.
 
 ## Captures — turn a packet capture into hashes
 
@@ -68,7 +80,9 @@ neon, plus Terrain, Midnight, Daylight, and Blueprint. Your choice is remembered
 
 ## Settings
 
-![The Settings tab](images/settings.png)
+Open Settings from the **cog (⚙)** in the top bar — it opens as a dialog.
+
+![The Settings dialog](images/settings.png)
 
 - **Wordlists** — installed builds ship a small **starter set**. Use **Download**
   next to a list (rockyou, xato-10M, darkc0de) to fetch the bigger lists from the

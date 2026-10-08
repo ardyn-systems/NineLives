@@ -12,13 +12,13 @@ const RAW = "https://raw.githubusercontent.com/danielmiessler/SecLists/master/";
 const SECLISTS_REPO = "https://github.com/danielmiessler/SecLists";
 
 const CATALOG = [
-  { id: "rockyou", name: "rockyou.txt", desc: "14.3M real leaked passwords — the classic WPA/general list.",
+  { id: "rockyou", name: "rockyou.txt", desc: "14.3M real leaked passwords. Best first try for WPA and most hashes — start here.",
     size: "≈134 MB", kind: "tgz", url: RAW + "Passwords/Leaked-Databases/rockyou.txt.tar.gz",
     member: "rockyou.txt", subpath: "Leaked-Databases/rockyou.txt" },
-  { id: "xato-10m", name: "xato-net-10-million-passwords.txt", desc: "Mark Burnett's ~5M-password corpus — broad general-purpose list.",
+  { id: "xato-10m", name: "xato-net-10-million-passwords.txt", desc: "~5M passwords (Mark Burnett's corpus). A broad general-purpose follow-up when rockyou misses.",
     size: "≈48 MB", kind: "txt", url: RAW + "Passwords/Common-Credentials/xato-net-10-million-passwords.txt",
     subpath: "Common-Credentials/xato-net-10-million-passwords.txt" },
-  { id: "darkc0de", name: "darkc0de.txt", desc: "Long-standing WPA/web mixed list (~1.7M entries).",
+  { id: "darkc0de", name: "darkc0de.txt", desc: "~1.7M mixed passwords. Extra coverage for WPA and web logins.",
     size: "≈15 MB", kind: "txt", url: RAW + "Passwords/darkc0de.txt", subpath: "darkc0de.txt" },
   { id: "seclists-full", name: "SecLists (full collection)",
     desc: "The entire SecLists repo (multi-GB). Clone it, then point the folder above at your checkout.",
