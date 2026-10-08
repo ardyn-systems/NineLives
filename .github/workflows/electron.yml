@@ -61,7 +61,9 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           set +e
-          NINELIVES_SMOKE=1 xvfb-run -a dist/linux-unpacked/ninelives --smoke
+          # --no-sandbox: CI's unpacked chrome-sandbox isn't root:4755 (the real
+          # AppImage sets this up); the sandbox isn't what we're testing here.
+          NINELIVES_SMOKE=1 xvfb-run -a dist/linux-unpacked/ninelives --smoke --no-sandbox
           code=$?
           echo "smoke exit=$code"
           exit $code
