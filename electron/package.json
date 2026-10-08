@@ -1,7 +1,7 @@
 {
   "name": "ninelives",
   "productName": "NineLives",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Push-button hashcat console (Electron)",
   "author": "Ardyn Systems",
   "license": "MIT",
