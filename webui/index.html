@@ -152,6 +152,19 @@
               <h3>Theme</h3>
               <div id="settings-themes" class="theme-grid" role="radiogroup" aria-label="Theme"></div>
             </div>
+            <div class="setting-block" id="device-block">
+              <h3>Graphics card</h3>
+              <p class="sub">Which device hashcat cracks on. <b>Automatic</b> uses every
+                device it detects — best for most setups. On a laptop with two GPUs,
+                pick the dedicated card for full speed.</p>
+              <div class="row">
+                <label class="field grow">Crack on
+                  <select id="device-select" class="select"></select>
+                </label>
+                <button class="btn" id="device-refresh" style="align-self:flex-end">Refresh</button>
+              </div>
+              <p class="hint" id="device-hint">Detecting devices…</p>
+            </div>
           </section>
 
           <!-- Wordlists -->

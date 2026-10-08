@@ -285,6 +285,13 @@ class Api extends EventEmitter {
         cmd.push(flag);
       }
     }
+    // Graphics-card choice from Settings, unless the user set -d/-D by hand.
+    const devSel = settings.get("device_select", "");
+    const hasDev = (p.options || []).some((o) => o.key === "--backend-devices");
+    const hasType = (p.options || []).some((o) => o.key === "--backend-device-types");
+    if (devSel === "gpu") { if (!hasType) cmd.push("-D", "2"); }
+    else if (/^\d+$/.test(devSel)) { if (!hasDev) cmd.push("-d", devSel); }
+
     if (!(p.options || []).some((o) => o.key === "--potfile-disable")) cmd.push("--potfile-path", POTFILE);
     return [cmd, null];
   }
@@ -406,6 +413,18 @@ class Api extends EventEmitter {
       }
     })();
     return { started: true };
+  }
+
+  // ---- graphics card / compute devices ----------------------------------
+  list_devices() {
+    return hashcat.listDevices();
+  }
+  get_device() {
+    return { select: settings.get("device_select", "") };
+  }
+  set_device(sel) {
+    settings.set("device_select", sel || "");
+    return { ok: true, select: sel || "" };
   }
 
   // ---- app self-update --------------------------------------------------

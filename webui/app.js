@@ -262,6 +262,39 @@ function onTourKey(e) {
   e.preventDefault();
 }
 
+/* ---------- graphics card / compute device selector (Settings › General) ---------- */
+async function populateDevices(force) {
+  const sel = el("device-select");
+  if (!sel) return;
+  const block = el("device-block");
+  const hint = el("device-hint");
+  if (S.hosted) { if (block) block.style.display = "none"; return; }  // no hashcat when hosted
+  if (S.devicesLoaded && !force) return;
+  S.devicesLoaded = true;
+  hint.textContent = "Detecting devices…";
+  let r, saved = "";
+  try {
+    r = await api().list_devices();
+    saved = (await api().get_device()).select || "";
+  } catch (e) { hint.textContent = "Couldn't detect devices. Automatic still works."; return; }
+  const devices = (r && r.devices) || [];
+  const hasGpu = devices.some((d) => d.type === "GPU");
+  let html = `<option value="">Automatic — use everything detected</option>`;
+  if (hasGpu) html += `<option value="gpu">All GPUs only (skip CPU)</option>`;
+  devices.forEach((d) => {
+    html += `<option value="${d.id}">Device ${d.id} — ${esc(d.name || "unknown")} (${esc(d.type || "?")})</option>`;
+  });
+  sel.innerHTML = html;
+  sel.value = [...sel.options].some((o) => o.value === String(saved)) ? String(saved) : "";
+  if (r && r.error) hint.textContent = `hashcat couldn't list devices (${r.error}). Automatic still works.`;
+  else if (!devices.length) hint.textContent = "No devices detected yet — Automatic lets hashcat choose. (A GPU needs its vendor driver installed.)";
+  else {
+    const g = devices.filter((d) => d.type === "GPU").length;
+    hint.textContent = `Detected ${devices.length} device${devices.length === 1 ? "" : "s"}`
+      + (g ? ` (${g} GPU${g === 1 ? "" : "s"})` : " (CPU only — install your GPU driver for big speedups)") + ".";
+  }
+}
+
 /* ---------- hash types: category → mode (no 500-item scroll) ---------- */
 // Most-used modes, surfaced under "★ Common" so you rarely need the full list.
 const COMMON_IDS = [22000, 16800, 1000, 0, 100, 1400, 1700, 3200, 1800, 500,
@@ -582,7 +615,7 @@ function wireEvents() {
 
   // --- Settings dialog (cog) ---
   const sOverlay = el("settings-overlay");
-  const openSettings = () => { sOverlay.classList.remove("hidden"); renderWordlistDownloads(); };
+  const openSettings = () => { sOverlay.classList.remove("hidden"); renderWordlistDownloads(); populateDevices(); };
   const closeSettings = () => sOverlay.classList.add("hidden");
   el("settings-btn").addEventListener("click", openSettings);
   el("settings-close").addEventListener("click", closeSettings);
@@ -677,6 +710,14 @@ function wireEvents() {
     if (r.path) el("hashfile").value = r.path;
   });
   el("rescan-btn").addEventListener("click", rescan);
+
+  // Graphics card selector
+  el("device-select").addEventListener("change", async (e) => {
+    await api().set_device(e.target.value);
+    const label = e.target.selectedOptions[0]?.textContent || "Automatic";
+    el("device-hint").textContent = `Cracking on: ${label}.`;
+  });
+  el("device-refresh").addEventListener("click", () => populateDevices(true));
 
   const showConsole = (on) => {
     const c = el("console"); const t = el("console-toggle");

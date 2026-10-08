@@ -88,8 +88,14 @@ left-hand menu of sections: **General**, **Wordlists**, **Integrations**,
 
 ![The Settings dialog](images/settings.png)
 
-- **General** — **Theme**: pick any of the six themes from the swatch grid; your
-  choice is remembered.
+- **General**
+  - **Theme** — pick any of the six themes from the swatch grid; your choice is
+    remembered.
+  - **Graphics card** — choose which device hashcat cracks on. **Automatic**
+    (default) uses every device it detects, which already includes your dedicated
+    GPU. On a laptop with both an integrated and a dedicated GPU, pick the
+    dedicated card (or **All GPUs only**) for full speed. **Refresh** re-detects;
+    if only a CPU shows up, install your GPU's vendor driver.
 - **Wordlists** — installed builds ship a small **starter set**. Use **Download**
   next to a list (rockyou, xato-10M, darkc0de) to fetch the bigger lists from the
   SecLists project; they land in your data dir and appear in the dropdowns
