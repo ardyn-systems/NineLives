@@ -27,6 +27,9 @@ DATA_DIR = paths.DATA_DIR          # per-user writable dir
 VENDOR_DIR = os.path.join(APP_DIR, "vendor", "hashcat")    # bundled (read-only)
 UPDATE_DIR = os.path.join(DATA_DIR, "vendor", "hashcat")   # self-update target
 CATALOG_CACHE = os.path.join(DATA_DIR, "hash_modes.cache.json")
+# Full hash-mode catalog shipped in the repo, used when there's no live hashcat
+# and no user cache (e.g. the hosted web demo, which has no hashcat binary).
+BUNDLED_CATALOG = os.path.join(APP_DIR, "data", "hash_modes.json")
 
 
 def find_hashcat():
@@ -205,14 +208,17 @@ def example_hash(mode_id, path=None):
 # Catalog: live -> cache -> static fallback
 # --------------------------------------------------------------------------- #
 def load_hash_modes():
-    """Instant: cached modes if present, else the static fallback. NO subprocess
-    (so startup never blocks on hashcat)."""
-    if os.path.isfile(CATALOG_CACHE):
-        try:
-            with open(CATALOG_CACHE, encoding="utf-8") as fh:
-                return json.load(fh)
-        except (OSError, ValueError):
-            pass
+    """Instant: user cache -> bundled full catalog -> curated static fallback. NO
+    subprocess (so startup never blocks on hashcat)."""
+    for src in (CATALOG_CACHE, BUNDLED_CATALOG):
+        if os.path.isfile(src):
+            try:
+                with open(src, encoding="utf-8") as fh:
+                    modes = json.load(fh)
+                if modes:
+                    return modes
+            except (OSError, ValueError):
+                pass
     return list(STATIC_HASH_MODES)
 
 

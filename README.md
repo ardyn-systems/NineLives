@@ -112,8 +112,12 @@ python ninelives.py --host 0.0.0.0 --port 8000   # then open http://localhost:80
 
 ### Live demo (Render)
 
-One-click deploy your own hosted instance with the included
-[`render.yaml`](render.yaml):
+**Try it: [ninelives-4749.onrender.com](https://ninelives-4749.onrender.com)** —
+a free **explore + extract** instance (browse the UI, import a capture, download
+the `.hc22000`; cracking is desktop-only). On Render's free plan it sleeps when
+idle, so the first visit after a lull takes ~30–60 s to wake.
+
+Deploy your own with the included [`render.yaml`](render.yaml):
 
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/ardyn-systems/NineLives)
 

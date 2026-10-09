@@ -25,6 +25,10 @@ It's pure standard library — no extra dependencies for server mode.
 
 ## Deploy to Render (free plan)
 
+A live instance runs at **[ninelives-4749.onrender.com](https://ninelives-4749.onrender.com)**
+(free plan — it sleeps when idle, so the first visit after a lull takes ~30–60 s
+to wake).
+
 The repo ships a [`render.yaml`](../render.yaml) blueprint.
 
 1. Push the repo to GitHub (already at `ardyn-systems/NineLives`).
