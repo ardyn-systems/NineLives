@@ -11,6 +11,10 @@ list and options come from hashcat itself, and the bundled hashcat engine
 auto-updates. Pick a hash type, pick an attack, pick a wordlist from a dropdown,
 click Run.
 
+**Try it now at [ninelives-4749.onrender.com](https://ninelives-4749.onrender.com)**,
+no install needed — explore the interface and extract hashes from a Wi-Fi
+capture. Or get the desktop app for Windows or Linux to actually crack.
+
 **Download:** [Releases](https://github.com/ardyn-systems/NineLives/releases)
 (Windows installer/portable, Linux AppImage/tarball).
 **Docs:** [User guide](docs/user-guide.md) · [Hosting](docs/hosting.md).
@@ -112,10 +116,11 @@ python ninelives.py --host 0.0.0.0 --port 8000   # then open http://localhost:80
 
 ### Live demo (Render)
 
-**Try it: [ninelives-4749.onrender.com](https://ninelives-4749.onrender.com)** —
-a free **explore + extract** instance (browse the UI, import a capture, download
-the `.hc22000`; cracking is desktop-only). On Render's free plan it sleeps when
-idle, so the first visit after a lull takes ~30–60 s to wake.
+The public demo at
+[ninelives-4749.onrender.com](https://ninelives-4749.onrender.com) is a free
+**explore + extract** instance (browse the UI, import a capture, download the
+`.hc22000`; cracking is desktop-only). On Render's free plan it sleeps when idle,
+so the first visit after a lull takes ~30–60 s to wake.
 
 Deploy your own with the included [`render.yaml`](render.yaml):
 
